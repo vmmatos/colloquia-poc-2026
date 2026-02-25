@@ -1,2 +1,2 @@
 # colloquia-poc-2026
-app for talk in real-time
+Where the teams talk about what they are doing and what they are planning to do.

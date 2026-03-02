@@ -1,4 +1,20 @@
 services:
+  ## Auth Service
+  auth-service:
+    build:
+      context: ../services/auth
+      dockerfile: Dockerfile
+    container_name: colloquia-auth-service
+    restart: unless-stopped
+    env_file:
+      - .dev.env
+    ports:
+      - "8080:8080"
+    depends_on:
+      auth-db:
+        condition: service_healthy
+
+  ## Auth DB
   auth-db:
     image: postgres:16-alpine
     container_name: colloquia-auth-db

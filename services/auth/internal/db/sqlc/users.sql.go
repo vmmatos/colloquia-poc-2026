@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -77,4 +78,57 @@ func (q *Queries) FindUserById(ctx context.Context, id uuid.UUID) (User, error) 
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const incrementFailedLoginAttempts = `-- name: IncrementFailedLoginAttempts :one
+UPDATE users
+SET failed_login_attempts = failed_login_attempts + 1,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, email, password_hash, failed_login_attempts, locked_until, created_at, updated_at
+`
+
+func (q *Queries) IncrementFailedLoginAttempts(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, incrementFailedLoginAttempts, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.FailedLoginAttempts,
+		&i.LockedUntil,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const lockUser = `-- name: LockUser :exec
+UPDATE users
+SET locked_until = $2,
+    updated_at = NOW()
+WHERE id = $1
+`
+
+type LockUserParams struct {
+	ID          uuid.UUID
+	LockedUntil pgtype.Timestamp
+}
+
+func (q *Queries) LockUser(ctx context.Context, arg LockUserParams) error {
+	_, err := q.db.Exec(ctx, lockUser, arg.ID, arg.LockedUntil)
+	return err
+}
+
+const resetFailedLoginAttempts = `-- name: ResetFailedLoginAttempts :exec
+UPDATE users
+SET failed_login_attempts = 0,
+    locked_until = NULL,
+    updated_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) ResetFailedLoginAttempts(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, resetFailedLoginAttempts, id)
+	return err
 }

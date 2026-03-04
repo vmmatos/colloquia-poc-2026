@@ -76,6 +76,26 @@ func (q *Queries) FindSessionByAccessTokenHash(ctx context.Context, accessTokenH
 	return i, err
 }
 
+const findSessionByRefreshTokenHash = `-- name: FindSessionByRefreshTokenHash :one
+SELECT id, user_id, refresh_token_hash, access_token_hash, expires_at, revoked, created_at, updated_at FROM sessions WHERE refresh_token_hash = $1 AND revoked = false
+`
+
+func (q *Queries) FindSessionByRefreshTokenHash(ctx context.Context, refreshTokenHash string) (Session, error) {
+	row := q.db.QueryRow(ctx, findSessionByRefreshTokenHash, refreshTokenHash)
+	var i Session
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.RefreshTokenHash,
+		&i.AccessTokenHash,
+		&i.ExpiresAt,
+		&i.Revoked,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const findSessionById = `-- name: FindSessionById :one
 SELECT id, user_id, refresh_token_hash, access_token_hash, expires_at, revoked, created_at, updated_at FROM sessions WHERE id = $1
 `
@@ -97,10 +117,19 @@ func (q *Queries) FindSessionById(ctx context.Context, id uuid.UUID) (Session, e
 }
 
 const revokeSession = `-- name: RevokeSession :exec
-UPDATE sessions SET revoked = true WHERE id = $1
+UPDATE sessions SET revoked = true, updated_at = NOW() WHERE id = $1
 `
 
 func (q *Queries) RevokeSession(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, revokeSession, id)
+	return err
+}
+
+const revokeAllUserSessions = `-- name: RevokeAllUserSessions :exec
+UPDATE sessions SET revoked = true, updated_at = NOW() WHERE user_id = $1
+`
+
+func (q *Queries) RevokeAllUserSessions(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, revokeAllUserSessions, userID)
 	return err
 }

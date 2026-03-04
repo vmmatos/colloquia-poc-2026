@@ -1,0 +1,52 @@
+services:
+  ## Auth DB
+  auth-db:
+    image: postgres:16-alpine
+    container_name: colloquia-auth-db
+    restart: unless-stopped
+    env_file:
+      - .dev.env
+    ports:
+      - "5433:5432"
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U colloquia -d colloquia-auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ## Auth DB Migrations
+  auth-migrate:
+    image: migrate/migrate:v4.18.1
+    container_name: colloquia-auth-migrate
+    volumes:
+      - ../services/auth/migrations:/migrations
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://colloquia:colloquia_dev_password@auth-db:5432/colloquia-auth?sslmode=disable"
+      - "up"
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    restart: on-failure
+
+  ## Auth Service
+  auth-service:
+    build:
+      context: ../services/auth
+      dockerfile: Dockerfile
+    container_name: colloquia-auth-service
+    restart: unless-stopped
+    env_file:
+      - .dev.env
+      - .secrets.env
+    ports:
+      - "50051:50051"
+      - "8080:8080"
+    depends_on:
+      auth-migrate:
+        condition: service_completed_successfully
+
+volumes:
+  auth-db-data:

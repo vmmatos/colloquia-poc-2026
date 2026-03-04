@@ -11,7 +11,8 @@ type Config struct {
 	DatabaseURL   string
 	JwtPrivateKey []byte
 	JwtPublicKey  []byte
-	ServerPort    string
+	GRPCPort      string
+	HTTPPort      string
 }
 
 func LoadConfig() (*Config, error) {
@@ -19,7 +20,8 @@ func LoadConfig() (*Config, error) {
 		DatabaseURL:   os.Getenv("DATABASE_URL"),
 		JwtPrivateKey: decodeKey(os.Getenv("JWT_PRIVATE_KEY")),
 		JwtPublicKey:  decodeKey(os.Getenv("JWT_PUBLIC_KEY")),
-		ServerPort:    os.Getenv("SERVER_PORT"),
+		GRPCPort:      os.Getenv("GRPC_PORT"),
+		HTTPPort:      os.Getenv("HTTP_PORT"),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -31,8 +33,11 @@ func LoadConfig() (*Config, error) {
 	if len(cfg.JwtPublicKey) == 0 {
 		return nil, errors.New("JWT_PUBLIC_KEY is required")
 	}
-	if cfg.ServerPort == "" {
-		cfg.ServerPort = "50051"
+	if cfg.GRPCPort == "" {
+		cfg.GRPCPort = "50051"
+	}
+	if cfg.HTTPPort == "" {
+		cfg.HTTPPort = "8080"
 	}
 
 	return cfg, nil
@@ -44,6 +49,5 @@ func decodeKey(s string) []byte {
 	if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s)); err == nil {
 		return decoded
 	}
-	// Fall back: replace literal \n with real newlines (common in shell exports).
 	return []byte(strings.ReplaceAll(s, `\n`, "\n"))
 }

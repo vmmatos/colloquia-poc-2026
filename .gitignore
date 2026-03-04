@@ -1,0 +1,7 @@
+.vscode
+.env
+.env.example
+
+CLAUDE.md
+
+./dev/.secrets.env

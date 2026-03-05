@@ -166,12 +166,12 @@ func (s *AuthService) ValidateToken(ctx context.Context, accessToken string) (*V
 		return nil, ErrTokenInvalid
 	}
 
-	email, ok := claims.MapClaims["email"].(string)
-	if !ok {
+	user, err := s.repo.FindUserById(ctx, userID)
+	if err != nil {
 		return nil, ErrTokenInvalid
 	}
 
-	return &ValidateResult{UserID: userID, Email: email}, nil
+	return &ValidateResult{UserID: userID, Email: user.Email}, nil
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
@@ -180,7 +180,7 @@ func (s *AuthService) issueSession(ctx context.Context, userID uuid.UUID, email 
 	sessionID := uuid.New()
 	expiresAt := time.Now().Add(refreshTokenDuration)
 
-	accessToken, err := s.generateAccessToken(userID, email, sessionID)
+	accessToken, err := s.generateAccessToken(userID, sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
 	}
@@ -226,7 +226,7 @@ func (s *AuthService) handleFailedLogin(ctx context.Context, userID uuid.UUID) e
 }
 
 // generateAccessToken creates a signed RS256 JWT.
-func (s *AuthService) generateAccessToken(userID uuid.UUID, email string, sessionID uuid.UUID) (string, error) {
+func (s *AuthService) generateAccessToken(userID uuid.UUID, sessionID uuid.UUID) (string, error) {
 	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(s.cfg.JwtPrivateKey)
 	if err != nil {
 		return "", fmt.Errorf("parse private key: %w", err)
@@ -234,11 +234,10 @@ func (s *AuthService) generateAccessToken(userID uuid.UUID, email string, sessio
 
 	now := time.Now()
 	claims := jwt.MapClaims{
-		"sub":   userID.String(),
-		"email": email,
-		"jti":   sessionID.String(),
-		"iat":   now.Unix(),
-		"exp":   now.Add(accessTokenDuration).Unix(),
+		"sub": userID.String(),
+		"jti": sessionID.String(),
+		"iat": now.Unix(),
+		"exp": now.Add(accessTokenDuration).Unix(),
 	}
 
 	return jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(privateKey)

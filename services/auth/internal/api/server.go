@@ -28,6 +28,7 @@ func NewServer(authService *service.AuthService, port string) *Server {
 		v1.POST("/logout", h.Logout)
 		v1.POST("/refresh", h.RefreshToken)
 		v1.GET("/validate", h.ValidateToken)
+		v1.GET("/me", h.Me)
 	}
 
 	return &Server{

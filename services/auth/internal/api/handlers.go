@@ -151,6 +151,26 @@ func (h *Handler) ValidateToken(c *gin.Context) {
 	c.JSON(http.StatusOK, validateResponse{
 		Valid:  true,
 		UserID: result.UserID.String(),
+	})
+}
+
+// GET /api/v1/auth/me
+func (h *Handler) Me(c *gin.Context) {
+	token, ok := bearerToken(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
+		return
+	}
+
+	result, err := h.authService.ValidateToken(c.Request.Context(), token)
+	if err != nil {
+		c.JSON(http.StatusOK, validateResponse{Valid: false})
+		return
+	}
+
+	c.JSON(http.StatusOK, validateResponse{
+		Valid:  true,
+		UserID: result.UserID.String(),
 		Email:  result.Email,
 	})
 }

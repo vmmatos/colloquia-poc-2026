@@ -1,4 +1,5 @@
 services:
+  ## Auth Domain -------------------------------------------------------------------
   ## Auth DB
   auth-db:
     image: postgres:16-alpine
@@ -47,6 +48,64 @@ services:
     depends_on:
       auth-migrate:
         condition: service_completed_successfully
+      users-service:
+        condition: service_started
+
+  ## Auth Domain -------------------------------------------------------------------
+
+  ## Users Domain ------------------------------------------------------------------
+  ## Users DB
+  users-db:
+    image: postgres:16-alpine
+    container_name: colloquia-users-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: colloquia
+      POSTGRES_PASSWORD: colloquia_dev_password
+      POSTGRES_DB: colloquia-users
+    ports:
+      - "5435:5432"
+    volumes:
+      - users-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U colloquia -d colloquia-users"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ## Users DB Migrations
+  users-migrate:
+    image: migrate/migrate:v4.18.1
+    container_name: colloquia-users-migrate
+    volumes:
+      - ../services/users/migrations:/migrations
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://colloquia:colloquia_dev_password@users-db:5432/colloquia-users?sslmode=disable"
+      - "up"
+    depends_on:
+      users-db:
+        condition: service_healthy
+    restart: on-failure
+
+  ## Users Service
+  users-service:
+    build:
+      context: ../services/users
+      dockerfile: Dockerfile
+    container_name: colloquia-users-service
+    restart: unless-stopped
+    env_file:
+      - .dev.env
+    ports:
+      - "50052:50052"
+      - "8081:8081"
+    depends_on:
+      users-migrate:
+        condition: service_completed_successfully
+
+  ## Users Domain ------------------------------------------------------------------
 
 volumes:
   auth-db-data:
+  users-db-data:

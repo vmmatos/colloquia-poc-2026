@@ -1,10 +1,11 @@
 package api
 
 import (
-	"auth/internal/service"
 	"context"
 	"net/http"
 	"time"
+	"users/internal/config"
+	"users/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,31 +14,30 @@ type Server struct {
 	httpServer *http.Server
 }
 
-func NewServer(authService *service.AuthService, port string) *Server {
+func NewServer(svc *service.UsersService, cfg *config.Config) *Server {
 	gin.SetMode(gin.ReleaseMode)
 
 	router := gin.New()
 	router.Use(gin.Recovery(), gin.Logger())
 
-	h := &Handler{authService: authService}
+	h := &Handler{svc: svc}
+	jwtMw := jwtMiddleware(cfg.JwtPublicKey)
 
 	router.GET("/__health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	v1 := router.Group("/api/v1/auth")
+	v1 := router.Group("/api/v1/users")
 	{
-		v1.POST("/register", h.Register)
-		v1.POST("/login", h.Login)
-		v1.POST("/logout", h.Logout)
-		v1.POST("/refresh", h.RefreshToken)
-		v1.GET("/validate", h.ValidateToken)
-		v1.GET("/me", h.Me)
+		v1.POST("/", h.CreateUser)
+		v1.GET("/me", jwtMw, h.Me)
+		v1.GET("/:id", h.GetUser)
+		v1.PATCH("/me", jwtMw, h.UpdateProfile)
 	}
 
 	return &Server{
 		httpServer: &http.Server{
-			Addr:         ":" + port,
+			Addr:         ":" + cfg.HTTPPort,
 			Handler:      router,
 			ReadTimeout:  10 * time.Second,
 			WriteTimeout: 10 * time.Second,

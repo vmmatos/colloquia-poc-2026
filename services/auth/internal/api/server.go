@@ -21,6 +21,10 @@ func NewServer(authService *service.AuthService, port string) *Server {
 
 	h := &Handler{authService: authService}
 
+	router.GET("/__health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
 	v1 := router.Group("/api/v1/auth")
 	{
 		v1.POST("/register", h.Register)

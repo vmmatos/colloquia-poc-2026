@@ -4,15 +4,16 @@ BINARY     := bin/auth
 
 .PHONY: generate build run migrate-up migrate-down test tidy
 
-## generate: Compile .proto files → internal/pb/
+## generate: Compile .proto files → internal/pb/ and internal/usersclient/
 generate:
 	@PATH="$$PATH:$$(go env GOPATH)/bin" protoc \
 		--go_out=$(OUT_DIR) \
 		--go_opt=module=auth \
 		--go-grpc_out=$(OUT_DIR) \
 		--go-grpc_opt=module=auth \
-		$(PROTO_DIR)/auth.proto
-	@echo "proto files generated in internal/pb/"
+		$(PROTO_DIR)/auth.proto \
+		$(PROTO_DIR)/users_client.proto
+	@echo "proto files generated in internal/pb/ and internal/usersclient/"
 
 ## build: Build the binary
 build:

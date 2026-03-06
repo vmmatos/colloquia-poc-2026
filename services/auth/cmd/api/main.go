@@ -6,6 +6,7 @@ import (
 	grpcserver "auth/internal/grpc"
 	"auth/internal/repository/postgres"
 	"auth/internal/service"
+	"auth/internal/usersclient"
 	"context"
 	"errors"
 	"log"
@@ -39,9 +40,19 @@ func main() {
 	}
 	log.Println("database: connection established")
 
+	// Connect to users service (best-effort — nil if unavailable).
+	var usersClient usersclient.UserCreator
+	uc, err := usersclient.NewUsersClient(cfg.UsersGRPCAddress)
+	if err != nil {
+		log.Printf("warn: users service unavailable at %s: %v — user profiles will not be created", cfg.UsersGRPCAddress, err)
+	} else {
+		usersClient = uc
+		defer uc.Close()
+	}
+
 	// Wire up layers.
 	authRepo := postgres.NewAuthRepository(pool)
-	authService := service.NewAuthService(authRepo, cfg)
+	authService := service.NewAuthService(authRepo, cfg, usersClient)
 
 	grpcSrv := grpcserver.NewServer(grpcserver.NewAuthHandler(authService))
 	httpSrv := api.NewServer(authService, cfg.HTTPPort)

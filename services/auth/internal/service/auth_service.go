@@ -3,6 +3,7 @@ package service
 import (
 	"auth/internal/config"
 	"auth/internal/repository"
+	"auth/internal/usersclient"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -10,6 +11,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -55,12 +57,13 @@ type ValidateResult struct {
 // ── Service ───────────────────────────────────────────────────────────────────
 
 type AuthService struct {
-	repo repository.IAuthRepository
-	cfg  *config.Config
+	repo        repository.IAuthRepository
+	cfg         *config.Config
+	userCreator usersclient.UserCreator // nil-safe: skip if nil
 }
 
-func NewAuthService(repo repository.IAuthRepository, cfg *config.Config) *AuthService {
-	return &AuthService{repo: repo, cfg: cfg}
+func NewAuthService(repo repository.IAuthRepository, cfg *config.Config, userCreator usersclient.UserCreator) *AuthService {
+	return &AuthService{repo: repo, cfg: cfg, userCreator: userCreator}
 }
 
 // Register creates a new user and returns a session with tokens.
@@ -79,6 +82,13 @@ func (s *AuthService) Register(ctx context.Context, email, password string) (*Au
 	userID := uuid.New()
 	if _, err = s.repo.CreateUser(ctx, userID, email, string(passwordHash)); err != nil {
 		return nil, fmt.Errorf("create user: %w", err)
+	}
+
+	// Best-effort: create profile in users service. If it fails, registration still succeeds.
+	if s.userCreator != nil {
+		if err := s.userCreator.CreateUser(ctx, userID.String(), email); err != nil {
+			log.Printf("warn: create user profile: %v", err)
+		}
 	}
 
 	return s.issueSession(ctx, userID, email)
@@ -180,7 +190,7 @@ func (s *AuthService) issueSession(ctx context.Context, userID uuid.UUID, email 
 	sessionID := uuid.New()
 	expiresAt := time.Now().Add(refreshTokenDuration)
 
-	accessToken, err := s.generateAccessToken(userID, sessionID)
+	accessToken, err := s.generateAccessToken(userID, sessionID, email)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
 	}
@@ -226,7 +236,7 @@ func (s *AuthService) handleFailedLogin(ctx context.Context, userID uuid.UUID) e
 }
 
 // generateAccessToken creates a signed RS256 JWT.
-func (s *AuthService) generateAccessToken(userID uuid.UUID, sessionID uuid.UUID) (string, error) {
+func (s *AuthService) generateAccessToken(userID uuid.UUID, sessionID uuid.UUID, email string) (string, error) {
 	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(s.cfg.JwtPrivateKey)
 	if err != nil {
 		return "", fmt.Errorf("parse private key: %w", err)
@@ -234,10 +244,11 @@ func (s *AuthService) generateAccessToken(userID uuid.UUID, sessionID uuid.UUID)
 
 	now := time.Now()
 	claims := jwt.MapClaims{
-		"sub": userID.String(),
-		"jti": sessionID.String(),
-		"iat": now.Unix(),
-		"exp": now.Add(accessTokenDuration).Unix(),
+		"sub":   userID.String(),
+		"jti":   sessionID.String(),
+		"email": email,
+		"iat":   now.Unix(),
+		"exp":   now.Add(accessTokenDuration).Unix(),
 	}
 
 	return jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(privateKey)

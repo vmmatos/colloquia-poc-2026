@@ -99,6 +99,7 @@ services:
     restart: unless-stopped
     env_file:
       - .dev.env
+      - .secrets.env
     ports:
       - "50052:50052"
       - "8081:8081"

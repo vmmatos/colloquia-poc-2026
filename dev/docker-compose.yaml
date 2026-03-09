@@ -109,6 +109,32 @@ services:
 
   ## ── Users Domain ------------------------------------------------------------------
 
+  ## ── Gateway -----------------------------------------------------------------------
+  ## KrakenD API Gateway — single entry point for all frontend clients.
+  ## In development the config is volume-mounted so changes take effect on restart
+  ## without rebuilding the image. For production, build the Dockerfile in gateway/.
+  gateway:
+    image: krakend:2
+    container_name: colloquia-gateway
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../gateway:/etc/krakend:ro
+    command: ["run", "-c", "/etc/krakend/krakend.json"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/__health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      auth-service:
+        condition: service_started
+      users-service:
+        condition: service_started
+
+  ## ── Gateway -----------------------------------------------------------------------
+
 volumes:
   auth-db-data:
   users-db-data:

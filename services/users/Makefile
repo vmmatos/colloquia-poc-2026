@@ -1,19 +1,18 @@
 PROTO_DIR  := proto
 OUT_DIR    := .
-BINARY     := bin/auth
+BINARY     := bin/users
 
 .PHONY: generate build run migrate-up migrate-down test tidy
 
-## generate: Compile .proto files → internal/pb/ and internal/usersclient/
+## generate: Compile .proto files → internal/pb/
 generate:
 	@PATH="$$PATH:$$(go env GOPATH)/bin" protoc \
 		--go_out=$(OUT_DIR) \
-		--go_opt=module=auth \
+		--go_opt=module=users \
 		--go-grpc_out=$(OUT_DIR) \
-		--go-grpc_opt=module=auth \
-		$(PROTO_DIR)/auth.proto \
-		$(PROTO_DIR)/users_client.proto
-	@echo "proto files generated in internal/pb/ and internal/usersclient/"
+		--go-grpc_opt=module=users \
+		$(PROTO_DIR)/users.proto
+	@echo "proto files generated in internal/pb/"
 
 ## build: Build the binary
 build:
@@ -31,7 +30,7 @@ test:
 tidy:
 	go mod tidy
 
-## migrate-up: Apply database migrations (requires goose or migrate CLI)
+## migrate-up: Apply database migrations
 migrate-up:
 	migrate -path migrations -database "$$DATABASE_URL" up
 
@@ -43,3 +42,4 @@ migrate-down:
 install-tools:
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest

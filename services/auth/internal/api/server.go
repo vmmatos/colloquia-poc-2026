@@ -1,8 +1,13 @@
 package api
 
 import (
+	"auth/internal/config"
 	"auth/internal/service"
 	"context"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"log"
 	"net/http"
 	"time"
 
@@ -13,17 +18,24 @@ type Server struct {
 	httpServer *http.Server
 }
 
-func NewServer(authService *service.AuthService, port string) *Server {
+func NewServer(authService *service.AuthService, cfg *config.Config) *Server {
 	gin.SetMode(gin.ReleaseMode)
 
 	router := gin.New()
 	router.Use(gin.Recovery(), gin.Logger())
+
+	// Parse RSA public key — required for the JWKS endpoint consumed by the
+	// API gateway. Fail fast so misconfiguration is caught at startup.
+	rsaPub := mustParseRSAPublicKey(cfg.JwtPublicKey)
 
 	h := &Handler{authService: authService}
 
 	router.GET("/__health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+
+	// Standard OIDC discovery path — consumed by KrakenD to verify JWTs.
+	router.GET("/.well-known/jwks.json", jwksHandler(rsaPub))
 
 	v1 := router.Group("/api/v1/auth")
 	{
@@ -37,7 +49,7 @@ func NewServer(authService *service.AuthService, port string) *Server {
 
 	return &Server{
 		httpServer: &http.Server{
-			Addr:         ":" + port,
+			Addr:         ":" + cfg.HTTPPort,
 			Handler:      router,
 			ReadTimeout:  10 * time.Second,
 			WriteTimeout: 10 * time.Second,
@@ -48,6 +60,22 @@ func NewServer(authService *service.AuthService, port string) *Server {
 
 func (s *Server) Start() error {
 	return s.httpServer.ListenAndServe()
+}
+
+func mustParseRSAPublicKey(pemBytes []byte) *rsa.PublicKey {
+	block, _ := pem.Decode(pemBytes)
+	if block == nil {
+		log.Fatal("api: failed to decode PEM block for RSA public key")
+	}
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		log.Fatalf("api: failed to parse RSA public key: %v", err)
+	}
+	rsaPub, ok := pub.(*rsa.PublicKey)
+	if !ok {
+		log.Fatal("api: JWT_PUBLIC_KEY is not an RSA public key")
+	}
+	return rsaPub
 }
 
 func (s *Server) Stop(ctx context.Context) error {

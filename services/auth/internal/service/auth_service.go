@@ -251,7 +251,9 @@ func (s *AuthService) generateAccessToken(userID uuid.UUID, sessionID uuid.UUID,
 		"exp":   now.Add(accessTokenDuration).Unix(),
 	}
 
-	return jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(privateKey)
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	token.Header["kid"] = "colloquia-auth-key-1"
+	return token.SignedString(privateKey)
 }
 
 type accessTokenClaims struct {

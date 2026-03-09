@@ -55,7 +55,7 @@ func main() {
 	authService := service.NewAuthService(authRepo, cfg, usersClient)
 
 	grpcSrv := grpcserver.NewServer(grpcserver.NewAuthHandler(authService))
-	httpSrv := api.NewServer(authService, cfg.HTTPPort)
+	httpSrv := api.NewServer(authService, cfg)
 
 	// Run both servers concurrently; cancel context if either fails.
 	g, gCtx := errgroup.WithContext(ctx)

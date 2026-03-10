@@ -46,7 +46,7 @@ services:
       - .secrets.env
     ports:
       - "50051:50051"
-      - "8080:8080"
+      - "8081:8081"
     depends_on:
       auth-migrate:
         condition: service_completed_successfully
@@ -102,7 +102,7 @@ services:
       - .secrets.env
     ports:
       - "50052:50052"
-      - "8081:8081"
+      - "8082:8082"
     depends_on:
       users-migrate:
         condition: service_completed_successfully
@@ -134,6 +134,23 @@ services:
         condition: service_started
 
   ## ── Gateway -----------------------------------------------------------------------
+
+  ## ── Web ───────────────────────────────────────────────────────────────────────
+  web:
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+    container_name: colloquia-web
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .dev.env
+      - .secrets.env
+    depends_on:
+      - gateway
+
+  ## ── Web ───────────────────────────────────────────────────────────────────────
 
 volumes:
   auth-db-data:

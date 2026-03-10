@@ -1,0 +1,12 @@
+{
+  "keys": [
+    {
+      "alg": "RS256",
+      "e": "AQAB",
+      "kid": "colloquia-auth-key-1",
+      "kty": "RSA",
+      "n": "5dr_2GRyKcMoPDVk3MHA2HIp7CrgO7fMXrSqclAhfeK_Aj3zEeZ0qYpV1fAJIBNR1XdlvRvWaCtu9KPHG_4sxscZSIUaST0vMH7HFR65LvVD7qJHFjBdK4onfK5DrnXmAqybxxqehMkKSOyHNylUiIpRiCHsZWzjYiKdlgWRJagxnmczNgn8gtrtsLKEkNE1vX02KCMx0E6lUVfyoMvf6cL-p82Kv3eV33v5Mf7b2SNbQIEGTaLbNzwNppR--OB4EXkKe3pN3l9LnCGp_dzJPYcIH-TQpzsrW9s7l3tIzSQMtoa-7dJ3bvznELRYH2hDgIVBoUQatqNNfHquVqBBXw",
+      "use": "sig"
+    }
+  ]
+}

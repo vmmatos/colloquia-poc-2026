@@ -39,7 +39,7 @@ func LoadConfig() (*Config, error) {
 		cfg.GRPCPort = "50051"
 	}
 	if cfg.HTTPPort == "" {
-		cfg.HTTPPort = "8080"
+		cfg.HTTPPort = "8081"
 	}
 	if cfg.UsersGRPCAddress == "" {
 		cfg.UsersGRPCAddress = "localhost:50052"

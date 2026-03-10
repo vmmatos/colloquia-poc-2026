@@ -33,7 +33,7 @@ func LoadConfig() (*Config, error) {
 		cfg.GRPCPort = "50052"
 	}
 	if cfg.HTTPPort == "" {
-		cfg.HTTPPort = "8081"
+		cfg.HTTPPort = "8082"
 	}
 
 	return cfg, nil

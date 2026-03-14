@@ -270,6 +270,232 @@
           "encoding": "no-op"
         }
       ]
+    },
+    {
+      "endpoint": "/api/v1/channels",
+      "method": "POST",
+      "output_encoding": "no-op",
+      "input_headers": [
+        "Authorization",
+        "Content-Type"
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://auth-service:8081/.well-known/jwks.json",
+          "disable_jwk_security": true,
+          "cache": true,
+          "cache_duration": 900
+        },
+        "qos/ratelimit/router": {
+          "max_rate": 100,
+          "client_max_rate": 20,
+          "strategy": "ip"
+        }
+      },
+      "backend": [
+        {
+          "url_pattern": "/api/v1/channels",
+          "host": [
+            "http://channels-service:8083"
+          ],
+          "method": "POST",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/v1/channels/me",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_headers": [
+        "Authorization"
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://auth-service:8081/.well-known/jwks.json",
+          "disable_jwk_security": true,
+          "cache": true,
+          "cache_duration": 900
+        },
+        "qos/ratelimit/router": {
+          "max_rate": 200,
+          "client_max_rate": 50,
+          "strategy": "ip"
+        }
+      },
+      "backend": [
+        {
+          "url_pattern": "/api/v1/channels/me",
+          "host": [
+            "http://channels-service:8083"
+          ],
+          "method": "GET",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/v1/channels/{id}",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_headers": [
+        "Authorization"
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://auth-service:8081/.well-known/jwks.json",
+          "disable_jwk_security": true,
+          "cache": true,
+          "cache_duration": 900
+        },
+        "qos/ratelimit/router": {
+          "max_rate": 200,
+          "client_max_rate": 50,
+          "strategy": "ip"
+        }
+      },
+      "backend": [
+        {
+          "url_pattern": "/api/v1/channels/{id}",
+          "host": [
+            "http://channels-service:8083"
+          ],
+          "method": "GET",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/v1/channels/{id}",
+      "method": "DELETE",
+      "output_encoding": "no-op",
+      "input_headers": [
+        "Authorization"
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://auth-service:8081/.well-known/jwks.json",
+          "disable_jwk_security": true,
+          "cache": true,
+          "cache_duration": 900
+        },
+        "qos/ratelimit/router": {
+          "max_rate": 60,
+          "client_max_rate": 10,
+          "strategy": "ip"
+        }
+      },
+      "backend": [
+        {
+          "url_pattern": "/api/v1/channels/{id}",
+          "host": [
+            "http://channels-service:8083"
+          ],
+          "method": "DELETE",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/v1/channels/{id}/members",
+      "method": "POST",
+      "output_encoding": "no-op",
+      "input_headers": [
+        "Authorization",
+        "Content-Type"
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://auth-service:8081/.well-known/jwks.json",
+          "disable_jwk_security": true,
+          "cache": true,
+          "cache_duration": 900
+        },
+        "qos/ratelimit/router": {
+          "max_rate": 100,
+          "client_max_rate": 20,
+          "strategy": "ip"
+        }
+      },
+      "backend": [
+        {
+          "url_pattern": "/api/v1/channels/{id}/members",
+          "host": [
+            "http://channels-service:8083"
+          ],
+          "method": "POST",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/v1/channels/{id}/members/{userId}",
+      "method": "DELETE",
+      "output_encoding": "no-op",
+      "input_headers": [
+        "Authorization"
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://auth-service:8081/.well-known/jwks.json",
+          "disable_jwk_security": true,
+          "cache": true,
+          "cache_duration": 900
+        },
+        "qos/ratelimit/router": {
+          "max_rate": 60,
+          "client_max_rate": 10,
+          "strategy": "ip"
+        }
+      },
+      "backend": [
+        {
+          "url_pattern": "/api/v1/channels/{id}/members/{userId}",
+          "host": [
+            "http://channels-service:8083"
+          ],
+          "method": "DELETE",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/v1/channels/{id}/members",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_headers": [
+        "Authorization"
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://auth-service:8081/.well-known/jwks.json",
+          "disable_jwk_security": true,
+          "cache": true,
+          "cache_duration": 900
+        },
+        "qos/ratelimit/router": {
+          "max_rate": 200,
+          "client_max_rate": 50,
+          "strategy": "ip"
+        }
+      },
+      "backend": [
+        {
+          "url_pattern": "/api/v1/channels/{id}/members",
+          "host": [
+            "http://channels-service:8083"
+          ],
+          "method": "GET",
+          "encoding": "no-op"
+        }
+      ]
     }
   ]
 }

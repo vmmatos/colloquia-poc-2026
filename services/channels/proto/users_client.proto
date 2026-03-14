@@ -1,0 +1,14 @@
+syntax = "proto3";
+// Minimal stub — must stay in sync with services/users/proto/users.proto
+// (field numbers and types must match).
+package users;
+option go_package = "channels/internal/usersclient";
+
+service UserService {
+  rpc BatchGetUsers(BatchGetUsersRequest) returns (BatchGetUsersResponse);
+}
+
+message BatchGetUsersRequest  { repeated string ids = 1; }
+message BatchGetUsersResponse { repeated UserProfile users = 1; }
+// Only the id field is used here; the full profile lives in the users service.
+message UserProfile           { string id = 1; }

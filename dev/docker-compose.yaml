@@ -109,6 +109,60 @@ services:
 
   ## ── Users Domain ------------------------------------------------------------------
 
+  ## ── Channels Domain ---------------------------------------------------------------
+  ## Channels DB
+  channels-db:
+    image: postgres:16-alpine
+    container_name: colloquia-channels-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: colloquia
+      POSTGRES_PASSWORD: colloquia_dev_password
+      POSTGRES_DB: colloquia-channels
+    ports:
+      - "5436:5432"
+    volumes:
+      - channels-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U colloquia -d colloquia-channels"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ## Channels DB Migrations
+  channels-migrate:
+    image: migrate/migrate:v4.18.1
+    container_name: colloquia-channels-migrate
+    volumes:
+      - ../services/channels/migrations:/migrations
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://colloquia:colloquia_dev_password@channels-db:5432/colloquia-channels?sslmode=disable"
+      - "up"
+    depends_on:
+      channels-db:
+        condition: service_healthy
+    restart: on-failure
+
+  ## Channels Service
+  channels-service:
+    build:
+      context: ../services/channels
+      dockerfile: Dockerfile
+    container_name: colloquia-channels-service
+    restart: unless-stopped
+    env_file:
+      - .dev.env
+      - .secrets.env
+    ports:
+      - "50053:50053"
+      - "8083:8083"
+    depends_on:
+      channels-migrate:
+        condition: service_completed_successfully
+
+  ## ── Channels Domain ---------------------------------------------------------------
+
   ## ── Gateway -----------------------------------------------------------------------
   ## KrakenD API Gateway — single entry point for all frontend clients.
   ## In development the config is volume-mounted so changes take effect on restart
@@ -131,6 +185,8 @@ services:
       auth-service:
         condition: service_started
       users-service:
+        condition: service_started
+      channels-service:
         condition: service_started
 
   ## ── Gateway -----------------------------------------------------------------------
@@ -172,4 +228,5 @@ services:
 volumes:
   auth-db-data:
   users-db-data:
+  channels-db-data:
   web-node-modules:

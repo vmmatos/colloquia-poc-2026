@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package channels;
+
+option go_package = "channels/internal/pb";
+
+service ChannelService {
+  rpc CreateChannel(CreateChannelRequest)           returns (ChannelResponse);
+  rpc GetChannel(GetChannelRequest)                 returns (ChannelResponse);
+  rpc DeleteChannel(DeleteChannelRequest)           returns (DeleteChannelResponse);
+  rpc AddMember(AddMemberRequest)                   returns (MemberResponse);
+  rpc RemoveMember(RemoveMemberRequest)             returns (RemoveMemberResponse);
+  rpc ListUserChannels(ListUserChannelsRequest)     returns (ListUserChannelsResponse);
+  rpc ListChannelMembers(ListChannelMembersRequest) returns (ListChannelMembersResponse);
+}
+
+// ── Channel messages ──────────────────────────────────────────────────────────
+
+message Channel {
+  string id           = 1;
+  string name         = 2;
+  string description  = 3;
+  bool   is_private   = 4;
+  string created_by   = 5;
+  bool   archived     = 6;
+  int32  member_count = 7;
+  int64  created_at   = 8;
+  int64  updated_at   = 9;
+}
+
+message Member {
+  string channel_id = 1;
+  string user_id    = 2;
+  string role       = 3;
+  int64  joined_at  = 4;
+}
+
+// ── Request / Response messages ───────────────────────────────────────────────
+
+message CreateChannelRequest {
+  string name               = 1;
+  string description        = 2;
+  bool   is_private         = 3;
+  string created_by         = 4;
+}
+
+message GetChannelRequest {
+  string channel_id         = 1;
+  string requesting_user_id = 2;
+}
+
+message DeleteChannelRequest {
+  string channel_id         = 1;
+  string requesting_user_id = 2;
+}
+
+message AddMemberRequest {
+  string channel_id         = 1;
+  string user_id            = 2;
+  string role               = 3;
+  string requesting_user_id = 4;
+}
+
+message RemoveMemberRequest {
+  string channel_id         = 1;
+  string user_id            = 2;
+  string requesting_user_id = 3;
+}
+
+message ListUserChannelsRequest  { string user_id = 1; }
+message ListChannelMembersRequest { string channel_id = 1; }
+
+message ChannelResponse          { Channel channel = 1; }
+message DeleteChannelResponse    { bool success = 1; }
+message MemberResponse           { Member member = 1; }
+message RemoveMemberResponse     { bool success = 1; }
+message ListUserChannelsResponse  { repeated Channel channels = 1; }
+message ListChannelMembersResponse { repeated Member members = 1; }

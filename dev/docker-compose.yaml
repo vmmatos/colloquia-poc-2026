@@ -160,6 +160,8 @@ services:
     depends_on:
       channels-migrate:
         condition: service_completed_successfully
+      users-service:
+        condition: service_started
 
   ## ── Channels Domain ---------------------------------------------------------------
 

@@ -8,18 +8,20 @@ import (
 )
 
 type Config struct {
-	DatabaseURL  string
-	JwtPublicKey []byte
-	GRPCPort     string
-	HTTPPort     string
+	DatabaseURL       string
+	JwtPublicKey      []byte
+	GRPCPort          string
+	HTTPPort          string
+	UsersGRPCAddress  string
 }
 
 func LoadConfig() (*Config, error) {
 	cfg := &Config{
-		DatabaseURL:  os.Getenv("CHANNELS_DATABASE_URL"),
-		JwtPublicKey: decodeKey(os.Getenv("JWT_PUBLIC_KEY")),
-		GRPCPort:     os.Getenv("CHANNELS_GRPC_PORT"),
-		HTTPPort:     os.Getenv("CHANNELS_HTTP_PORT"),
+		DatabaseURL:      os.Getenv("CHANNELS_DATABASE_URL"),
+		JwtPublicKey:     decodeKey(os.Getenv("JWT_PUBLIC_KEY")),
+		GRPCPort:         os.Getenv("CHANNELS_GRPC_PORT"),
+		HTTPPort:         os.Getenv("CHANNELS_HTTP_PORT"),
+		UsersGRPCAddress: os.Getenv("USERS_GRPC_ADDRESS"),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -34,6 +36,9 @@ func LoadConfig() (*Config, error) {
 	}
 	if cfg.HTTPPort == "" {
 		cfg.HTTPPort = "8083"
+	}
+	if cfg.UsersGRPCAddress == "" {
+		cfg.UsersGRPCAddress = "localhost:50052"
 	}
 
 	return cfg, nil

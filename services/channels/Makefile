@@ -4,15 +4,16 @@ BINARY     := bin/channels
 
 .PHONY: generate build run migrate-up migrate-down test tidy
 
-## generate: Compile .proto files → internal/pb/
+## generate: Compile .proto files → internal/pb/ and internal/usersclient/
 generate:
 	@PATH="$$PATH:$$(go env GOPATH)/bin" protoc \
 		--go_out=$(OUT_DIR) \
 		--go_opt=module=channels \
 		--go-grpc_out=$(OUT_DIR) \
 		--go-grpc_opt=module=channels \
-		$(PROTO_DIR)/channels.proto
-	@echo "proto files generated in internal/pb/"
+		$(PROTO_DIR)/channels.proto \
+		$(PROTO_DIR)/users_client.proto
+	@echo "proto files generated in internal/pb/ and internal/usersclient/"
 
 ## build: Build the binary
 build:

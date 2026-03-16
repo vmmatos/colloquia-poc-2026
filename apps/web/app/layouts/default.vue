@@ -5,17 +5,13 @@ const { auth, logout, getProfile } = useAuth()
 useTokenRefresh()
 const isMobile = useIsMobile()
 const { addNotification } = useNotifications()
+const { channels, fetchMyChannels } = useChannels()
 
 const displayName = ref('')
 const showProfile = ref(false)
-const activeChannel = ref('general')
 const sidebarOpen = ref(false)
-
-const channels = reactive([
-  { id: 'general', label: 'geral', unread: 3 },
-  { id: 'random', label: 'random', unread: 1 },
-  { id: 'dev', label: 'dev', unread: 0 },
-])
+const showCreateChannel = ref(false)
+const managingChannelId = ref<string | null>(null)
 
 const dms = reactive([
   { id: 'alice', label: 'Alice', online: true, unread: 2 },
@@ -33,18 +29,17 @@ onMounted(async () => {
   } catch {
     // profile might not exist yet
   }
+
+  try {
+    await fetchMyChannels()
+  } catch {
+    // channels might not be available
+  }
 })
 
 async function handleLogout() {
   try { await logout() } catch { /* ignore */ }
   await navigateTo('/login')
-}
-
-function selectChannel(id: string) {
-  const ch = channels.find(c => c.id === id) || dms.find(d => d.id === id)
-  if (ch) ch.unread = 0
-  activeChannel.value = id
-  if (isMobile.value) sidebarOpen.value = false
 }
 
 // Provide panel state for pages that need it
@@ -61,12 +56,10 @@ async function onProfileClose() {
   }
 }
 
-// ---- Simulated incoming messages ----
+// ---- Simulated incoming DM messages ----
 const SIMULATED = [
-  { author: 'Ana Costa',  body: 'Alguém reviu o PR #42?',          channelId: 'dev',    type: 'message' as const },
-  { author: 'Bob',        body: '@you o que achas desta proposta?', channelId: 'random', type: 'mention' as const },
-  { author: 'Charlie',    body: 'Deploy feito com sucesso 🚀',      channelId: 'dev',    type: 'message' as const },
-  { author: 'Ana Costa',  body: 'Reunião às 15h no #geral',         channelId: 'random', type: 'message' as const },
+  { author: 'Alice', body: '@you o que achas desta proposta?', dmId: 'alice', type: 'mention' as const },
+  { author: 'Bob',   body: 'Alguém reviu o PR #42?',          dmId: 'bob',   type: 'message' as const },
 ]
 
 const toasts = ref<Toast[]>([])
@@ -77,23 +70,18 @@ onMounted(() => {
     const sim = SIMULATED[simIdx % SIMULATED.length]
     simIdx++
 
-    if (sim.channelId === activeChannel.value) return
+    const dm = dms.find(d => d.id === sim.dmId)
+    if (dm) dm.unread++
 
-    // Increment unread on channel
-    const ch = channels.find(c => c.id === sim.channelId) || dms.find(d => d.id === sim.channelId)
-    if (ch) ch.unread++
-
-    // Add to NotificationCenter
     addNotification({
       type: sim.type,
-      title: `${sim.author} em #${sim.channelId}`,
+      title: `${sim.author} (mensagem directa)`,
       body: sim.body,
       time: 'agora',
     })
 
-    // Show toast (auto-dismiss 3.5s)
     const id = Date.now()
-    toasts.value.push({ id, author: sim.author, preview: sim.body.slice(0, 60), channel: `#${sim.channelId}` })
+    toasts.value.push({ id, author: sim.author, preview: sim.body.slice(0, 60), channel: sim.author })
     setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id) }, 3500)
   }, 8000)
 
@@ -134,41 +122,66 @@ function dismissToast(id: number) {
         <nav class="flex-1 overflow-y-auto py-3">
           <!-- Channels section -->
           <div class="mb-2">
-            <button
-              class="flex items-center gap-1 w-full px-4 py-1 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors font-heading"
-              @click="channelsOpen = !channelsOpen"
-            >
-              <svg
-                :class="['h-3 w-3 transition-transform flex-shrink-0', channelsOpen ? 'rotate-90' : '']"
-                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            <div class="flex items-center w-full px-4 py-1">
+              <button
+                class="flex items-center gap-1 flex-1 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors font-heading"
+                @click="channelsOpen = !channelsOpen"
               >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-              <span>Canais</span>
-            </button>
+                <svg
+                  :class="['h-3 w-3 transition-transform flex-shrink-0', channelsOpen ? 'rotate-90' : '']"
+                  xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+                <span>Canais</span>
+              </button>
+              <button
+                class="text-muted-foreground hover:text-foreground transition-colors ml-1 flex-shrink-0"
+                title="Criar canal"
+                @click.stop="showCreateChannel = true"
+              >
+                <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
 
             <ul v-if="channelsOpen" class="mt-1">
-              <li v-for="ch in channels" :key="ch.id">
+              <li
+                v-for="ch in channels"
+                :key="ch.id"
+                class="group relative flex items-stretch"
+                :class="[
+                  $route.params.id === ch.id ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
+                ]"
+              >
                 <NuxtLink
-                  :to="ch.id === 'general' ? '/' : `/channels/${ch.id}`"
-                  class="flex items-center gap-2 px-4 py-1.5 text-sm font-heading transition-colors"
-                  :class="[
-                    activeChannel === ch.id
-                      ? 'bg-secondary text-foreground'
-                      : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
-                    ch.unread > 0 && activeChannel !== ch.id ? 'font-semibold text-foreground' : '',
-                  ]"
-                  @click="selectChannel(ch.id)"
+                  :to="`/channels/${ch.id}`"
+                  class="flex-1 flex items-center gap-2 px-4 py-1.5 text-sm font-heading transition-colors"
                 >
                   <span class="text-muted-foreground">#</span>
-                  <span class="flex-1 truncate">{{ ch.label }}</span>
-                  <span
-                    v-if="ch.unread > 0 && activeChannel !== ch.id"
-                    class="ml-auto w-4 h-4 rounded-full bg-primary text-primary-foreground text-xs font-heading font-semibold flex items-center justify-center flex-shrink-0"
-                  >
-                    {{ ch.unread > 9 ? '9+' : ch.unread }}
-                  </span>
+                  <span class="flex-1 truncate">{{ ch.name }}</span>
                 </NuxtLink>
+                <button
+                  class="opacity-0 group-hover:opacity-100 px-2 text-muted-foreground hover:text-foreground transition-opacity flex-shrink-0"
+                  title="Gerir canal"
+                  @click="managingChannelId = ch.id"
+                >
+                  <svg class="h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </button>
+              </li>
+
+              <li v-if="channels.length === 0">
+                <button
+                  class="flex items-center gap-2 w-full px-4 py-1.5 text-sm font-heading text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                  @click="showCreateChannel = true"
+                >
+                  <span class="text-muted-foreground/40">#</span>
+                  <span class="italic">Criar primeiro canal...</span>
+                </button>
               </li>
             </ul>
           </div>
@@ -193,7 +206,6 @@ function dismissToast(id: number) {
                 <button
                   class="flex items-center gap-2 w-full px-4 py-1.5 text-sm font-heading transition-colors hover:bg-secondary/50 hover:text-foreground"
                   :class="dm.unread > 0 ? 'text-foreground font-semibold' : 'text-muted-foreground'"
-                  @click="selectChannel(dm.id)"
                 >
                   <div class="relative flex-shrink-0">
                     <UiAvatar :name="dm.label" size="sm" />
@@ -255,6 +267,21 @@ function dismissToast(id: number) {
     <ProfilePanel
       :open="showProfile"
       @close="onProfileClose"
+    />
+
+    <!-- Create Channel Modal -->
+    <CreateChannelModal
+      :open="showCreateChannel"
+      @close="showCreateChannel = false"
+    />
+
+    <!-- Manage Channel Modal -->
+    <ManageChannelModal
+      v-if="managingChannelId"
+      :open="!!managingChannelId"
+      :channel-id="managingChannelId"
+      @close="managingChannelId = null"
+      @deleted="managingChannelId = null"
     />
 
     <!-- Message toasts -->

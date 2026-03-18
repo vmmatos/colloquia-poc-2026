@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const batchGetUserProfiles = `-- name: BatchGetUserProfiles :many
@@ -90,6 +91,87 @@ func (q *Queries) GetUserProfile(ctx context.Context, id uuid.UUID) (UserProfile
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const listUsers = `-- name: ListUsers :many
+SELECT id, email, name, avatar, bio, timezone, status, created_at, updated_at FROM user_profiles ORDER BY created_at DESC LIMIT $1 OFFSET $2
+`
+
+type ListUsersParams struct {
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]UserProfile, error) {
+	rows, err := q.db.Query(ctx, listUsers, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserProfile
+	for rows.Next() {
+		var i UserProfile
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Name,
+			&i.Avatar,
+			&i.Bio,
+			&i.Timezone,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchUsers = `-- name: SearchUsers :many
+SELECT id, email, name, avatar, bio, timezone, status, created_at, updated_at FROM user_profiles
+WHERE name ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%'
+ORDER BY created_at DESC LIMIT $2 OFFSET $3
+`
+
+type SearchUsersParams struct {
+	Column1 pgtype.Text
+	Limit   int32
+	Offset  int32
+}
+
+func (q *Queries) SearchUsers(ctx context.Context, arg SearchUsersParams) ([]UserProfile, error) {
+	rows, err := q.db.Query(ctx, searchUsers, arg.Column1, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserProfile
+	for rows.Next() {
+		var i UserProfile
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Name,
+			&i.Avatar,
+			&i.Bio,
+			&i.Timezone,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateUserProfile = `-- name: UpdateUserProfile :one

@@ -27,7 +27,16 @@ func (h *ChannelsHandler) CreateChannel(ctx context.Context, req *pb.CreateChann
 		return nil, status.Errorf(codes.InvalidArgument, "invalid created_by: %v", err)
 	}
 
-	ch, err := h.svc.CreateChannel(ctx, req.GetName(), req.GetDescription(), req.GetIsPrivate(), createdBy)
+	memberIDs := make([]uuid.UUID, 0, len(req.GetMemberIds()))
+	for _, s := range req.GetMemberIds() {
+		uid, err := uuid.Parse(s)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid member_id %q: %v", s, err)
+		}
+		memberIDs = append(memberIDs, uid)
+	}
+
+	ch, err := h.svc.CreateChannel(ctx, req.GetName(), req.GetDescription(), req.GetIsPrivate(), createdBy, memberIDs)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}

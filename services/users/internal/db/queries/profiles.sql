@@ -17,3 +17,11 @@ SET name       = $2,
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;
+
+-- name: ListUsers :many
+SELECT * FROM user_profiles ORDER BY created_at DESC LIMIT $1 OFFSET $2;
+
+-- name: SearchUsers :many
+SELECT * FROM user_profiles
+WHERE name ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%'
+ORDER BY created_at DESC LIMIT $2 OFFSET $3;

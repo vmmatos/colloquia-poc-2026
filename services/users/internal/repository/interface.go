@@ -21,4 +21,6 @@ type IUsersRepository interface {
 	GetUserProfile(ctx context.Context, id uuid.UUID) (sqlc.UserProfile, error)
 	BatchGetUserProfiles(ctx context.Context, ids []uuid.UUID) ([]sqlc.UserProfile, error)
 	UpdateUserProfile(ctx context.Context, id uuid.UUID, params UpdateParams) (sqlc.UserProfile, error)
+	ListUsers(ctx context.Context, limit, offset int32) ([]sqlc.UserProfile, error)
+	SearchUsers(ctx context.Context, query string, limit, offset int32) ([]sqlc.UserProfile, error)
 }

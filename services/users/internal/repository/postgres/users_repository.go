@@ -6,6 +6,7 @@ import (
 	"users/internal/repository"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -37,5 +38,17 @@ func (r *UsersRepository) UpdateUserProfile(ctx context.Context, id uuid.UUID, p
 		Bio:      params.Bio,
 		Timezone: params.Timezone,
 		Status:   params.Status,
+	})
+}
+
+func (r *UsersRepository) ListUsers(ctx context.Context, limit, offset int32) ([]sqlc.UserProfile, error) {
+	return r.queries.ListUsers(ctx, sqlc.ListUsersParams{Limit: limit, Offset: offset})
+}
+
+func (r *UsersRepository) SearchUsers(ctx context.Context, query string, limit, offset int32) ([]sqlc.UserProfile, error) {
+	return r.queries.SearchUsers(ctx, sqlc.SearchUsersParams{
+		Column1: pgtype.Text{String: query, Valid: true},
+		Limit:   limit,
+		Offset:  offset,
 	})
 }

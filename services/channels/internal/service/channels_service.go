@@ -31,8 +31,25 @@ func NewChannelsService(repo repository.IChannelsRepository, userVal usersclient
 	return &ChannelsService{repo: repo, userVal: userVal}
 }
 
-func (s *ChannelsService) CreateChannel(ctx context.Context, name, description string, isPrivate bool, createdBy uuid.UUID) (*repository.ChannelRow, error) {
-	ch, err := s.repo.CreateChannelWithOwner(ctx, name, description, isPrivate, createdBy)
+func (s *ChannelsService) CreateChannel(ctx context.Context, name, description string, isPrivate bool, createdBy uuid.UUID, memberIDs []uuid.UUID) (*repository.ChannelRow, error) {
+	if s.userVal != nil && len(memberIDs) > 0 {
+		toValidate := make([]string, 0, len(memberIDs))
+		for _, uid := range memberIDs {
+			if uid != createdBy {
+				toValidate = append(toValidate, uid.String())
+			}
+		}
+		if len(toValidate) > 0 {
+			if err := s.userVal.UsersExist(ctx, toValidate); err != nil {
+				if errors.Is(err, usersclient.ErrUserNotFound) {
+					return nil, ErrUserNotFound
+				}
+				return nil, fmt.Errorf("validate members: %w", err)
+			}
+		}
+	}
+
+	ch, err := s.repo.CreateChannelWithOwner(ctx, name, description, isPrivate, createdBy, memberIDs)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return nil, ErrChannelAlreadyExists

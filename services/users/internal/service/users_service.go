@@ -112,7 +112,41 @@ func (s *UsersService) UpdateProfile(ctx context.Context, id uuid.UUID, name, av
 	return toResult(profile), nil
 }
 
+func (s *UsersService) ListUsers(ctx context.Context, limit, offset int32) ([]*UserResult, error) {
+	profiles, err := s.repo.ListUsers(ctx, clampLimit(limit), offset)
+	if err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	results := make([]*UserResult, len(profiles))
+	for i, p := range profiles {
+		results[i] = toResult(p)
+	}
+	return results, nil
+}
+
+func (s *UsersService) SearchUsers(ctx context.Context, query string, limit, offset int32) ([]*UserResult, error) {
+	profiles, err := s.repo.SearchUsers(ctx, query, clampLimit(limit), offset)
+	if err != nil {
+		return nil, fmt.Errorf("search users: %w", err)
+	}
+	results := make([]*UserResult, len(profiles))
+	for i, p := range profiles {
+		results[i] = toResult(p)
+	}
+	return results, nil
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+func clampLimit(l int32) int32 {
+	if l <= 0 {
+		return 20
+	}
+	if l > 100 {
+		return 100
+	}
+	return l
+}
 
 func toResult(p sqlc.UserProfile) *UserResult {
 	return &UserResult{

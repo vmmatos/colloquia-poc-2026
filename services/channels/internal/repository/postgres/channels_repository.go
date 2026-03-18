@@ -22,8 +22,8 @@ func NewChannelsRepository(pool *pgxpool.Pool) *ChannelsRepository {
 	}
 }
 
-// CreateChannelWithOwner creates a channel and inserts the creator as 'owner' in one transaction.
-func (r *ChannelsRepository) CreateChannelWithOwner(ctx context.Context, name, description string, isPrivate bool, createdBy uuid.UUID) (*repository.ChannelRow, error) {
+// CreateChannelWithOwner creates a channel, inserts the creator as 'owner', and adds any extra memberIDs in one transaction.
+func (r *ChannelsRepository) CreateChannelWithOwner(ctx context.Context, name, description string, isPrivate bool, createdBy uuid.UUID, memberIDs []uuid.UUID) (*repository.ChannelRow, error) {
 	var channel sqlc.Channel
 
 	err := pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
@@ -45,7 +45,24 @@ func (r *ChannelsRepository) CreateChannelWithOwner(ctx context.Context, name, d
 			UserID:    createdBy,
 			Role:      "owner",
 		})
-		return err
+		if err != nil {
+			return err
+		}
+
+		for _, uid := range memberIDs {
+			if uid == createdBy {
+				continue // owner already inserted
+			}
+			_, err = q.AddChannelMember(ctx, sqlc.AddChannelMemberParams{
+				ChannelID: channel.ID,
+				UserID:    uid,
+				Role:      "member",
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err

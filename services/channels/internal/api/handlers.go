@@ -73,9 +73,10 @@ func bearerToken(c *gin.Context) (string, bool) {
 // ── Request / response types ──────────────────────────────────────────────────
 
 type createChannelRequest struct {
-	Name        string `json:"name"        binding:"required"`
-	Description string `json:"description"`
-	IsPrivate   bool   `json:"is_private"`
+	Name        string   `json:"name"        binding:"required"`
+	Description string   `json:"description"`
+	IsPrivate   bool     `json:"is_private"`
+	MemberIDs   []string `json:"member_ids"`
 }
 
 type addMemberRequest struct {
@@ -137,7 +138,17 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 		return
 	}
 
-	ch, err := h.svc.CreateChannel(c.Request.Context(), req.Name, req.Description, req.IsPrivate, userID)
+	memberIDs := make([]uuid.UUID, 0, len(req.MemberIDs))
+	for _, s := range req.MemberIDs {
+		uid, err := uuid.Parse(s)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid member_id: " + s})
+			return
+		}
+		memberIDs = append(memberIDs, uid)
+	}
+
+	ch, err := h.svc.CreateChannel(c.Request.Context(), req.Name, req.Description, req.IsPrivate, userID, memberIDs)
 	if err != nil {
 		c.JSON(serviceErrorStatus(err), gin.H{"error": err.Error()})
 		return

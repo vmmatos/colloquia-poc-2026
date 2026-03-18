@@ -42,6 +42,7 @@ message CreateChannelRequest {
   string description        = 2;
   bool   is_private         = 3;
   string created_by         = 4;
+  repeated string member_ids = 5;
 }
 
 message GetChannelRequest {

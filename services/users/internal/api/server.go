@@ -30,7 +30,9 @@ func NewServer(svc *service.UsersService, cfg *config.Config) *Server {
 	v1 := router.Group("/api/v1/users")
 	{
 		v1.POST("/", h.CreateUser)
+		v1.GET("", jwtMw, h.ListUsers)
 		v1.GET("/me", jwtMw, h.Me)
+		v1.GET("/search", jwtMw, h.SearchUsers)
 		v1.GET("/:id", h.GetUser)
 		v1.PATCH("/me", jwtMw, h.UpdateProfile)
 	}

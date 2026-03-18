@@ -29,7 +29,7 @@ type MemberRow struct {
 
 type IChannelsRepository interface {
 	// Channel operations
-	CreateChannelWithOwner(ctx context.Context, name, description string, isPrivate bool, createdBy uuid.UUID) (*ChannelRow, error)
+	CreateChannelWithOwner(ctx context.Context, name, description string, isPrivate bool, createdBy uuid.UUID, memberIDs []uuid.UUID) (*ChannelRow, error)
 	GetChannel(ctx context.Context, channelID uuid.UUID) (*ChannelRow, error)
 	ArchiveChannel(ctx context.Context, channelID uuid.UUID) error
 

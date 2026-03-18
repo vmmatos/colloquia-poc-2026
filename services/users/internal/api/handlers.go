@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"users/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -186,6 +187,46 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, toResponse(result))
 }
 
+// GET /api/v1/users  (requires JWT)
+func (h *Handler) ListUsers(c *gin.Context) {
+	limit, offset := parsePagination(c)
+
+	results, err := h.svc.ListUsers(c.Request.Context(), limit, offset)
+	if err != nil {
+		c.JSON(serviceErrorStatus(err), gin.H{"error": err.Error()})
+		return
+	}
+
+	resp := make([]userResponse, len(results))
+	for i, r := range results {
+		resp[i] = toResponse(r)
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// GET /api/v1/users/search  (requires JWT)
+func (h *Handler) SearchUsers(c *gin.Context) {
+	q := c.Query("q")
+	if q == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing q parameter"})
+		return
+	}
+
+	limit, offset := parsePagination(c)
+
+	results, err := h.svc.SearchUsers(c.Request.Context(), q, limit, offset)
+	if err != nil {
+		c.JSON(serviceErrorStatus(err), gin.H{"error": err.Error()})
+		return
+	}
+
+	resp := make([]userResponse, len(results))
+	for i, r := range results {
+		resp[i] = toResponse(r)
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 // ── Error mapping ─────────────────────────────────────────────────────────────
 
 func serviceErrorStatus(err error) int {
@@ -197,4 +238,14 @@ func serviceErrorStatus(err error) int {
 	default:
 		return http.StatusInternalServerError
 	}
+}
+
+func parsePagination(c *gin.Context) (limit, offset int32) {
+	if v, err := strconv.Atoi(c.Query("limit")); err == nil && v > 0 {
+		limit = int32(v)
+	}
+	if v, err := strconv.Atoi(c.Query("offset")); err == nil && v >= 0 {
+		offset = int32(v)
+	}
+	return
 }

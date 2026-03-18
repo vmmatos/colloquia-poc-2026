@@ -86,6 +86,34 @@ func (h *UsersHandler) UpdateProfile(ctx context.Context, req *pb.UpdateProfileR
 	return &pb.UserResponse{User: toProto(result)}, nil
 }
 
+func (h *UsersHandler) ListUsers(ctx context.Context, req *pb.ListUsersRequest) (*pb.ListUsersResponse, error) {
+	results, err := h.svc.ListUsers(ctx, req.GetLimit(), req.GetOffset())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+
+	users := make([]*pb.UserProfile, len(results))
+	for i, r := range results {
+		users[i] = toProto(r)
+	}
+
+	return &pb.ListUsersResponse{Users: users}, nil
+}
+
+func (h *UsersHandler) SearchUsers(ctx context.Context, req *pb.SearchUsersRequest) (*pb.SearchUsersResponse, error) {
+	results, err := h.svc.SearchUsers(ctx, req.GetQuery(), req.GetLimit(), req.GetOffset())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+
+	users := make([]*pb.UserProfile, len(results))
+	for i, r := range results {
+		users[i] = toProto(r)
+	}
+
+	return &pb.SearchUsersResponse{Users: users}, nil
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 func toProto(r *service.UserResult) *pb.UserProfile {

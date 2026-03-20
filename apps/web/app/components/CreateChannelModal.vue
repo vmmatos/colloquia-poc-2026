@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type { CreateChannelInput } from '../../shared/types/channels'
+import type { UserProfile } from '../../shared/types/auth'
 
 defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
 const { createChannel } = useChannels()
+const { auth } = useAuth()
+const config = useRuntimeConfig()
 
 const name = ref('')
 const description = ref('')
@@ -12,11 +15,52 @@ const isPrivate = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
+// Member search
+const memberQuery = ref('')
+const memberResults = ref<UserProfile[]>([])
+const selectedMembers = ref<UserProfile[]>([])
+const searchLoading = ref(false)
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(memberQuery, (q) => {
+  if (searchTimer) clearTimeout(searchTimer)
+  if (!q.trim()) { memberResults.value = []; return }
+  searchTimer = setTimeout(async () => {
+    searchLoading.value = true
+    try {
+      const res = await $fetch<UserProfile[]>(`${config.public.apiBase}/api/v1/users/search`, {
+        query: { q: q.trim() },
+        headers: { Authorization: `Bearer ${auth.value.access_token}` },
+      })
+      memberResults.value = res ?? []
+    } catch {
+      memberResults.value = []
+    } finally {
+      searchLoading.value = false
+    }
+  }, 300)
+})
+
+function selectMember(user: UserProfile) {
+  if (!selectedMembers.value.find(m => m.user_id === user.user_id)) {
+    selectedMembers.value = [...selectedMembers.value, user]
+  }
+  memberQuery.value = ''
+  memberResults.value = []
+}
+
+function removeMember(userId: string) {
+  selectedMembers.value = selectedMembers.value.filter(m => m.user_id !== userId)
+}
+
 function reset() {
   name.value = ''
   description.value = ''
   isPrivate.value = false
   error.value = null
+  memberQuery.value = ''
+  memberResults.value = []
+  selectedMembers.value = []
 }
 
 function close() {
@@ -38,6 +82,9 @@ async function submit() {
       name: trimmedName,
       description: description.value.trim() || undefined,
       is_private: isPrivate.value,
+      ...(selectedMembers.value.length > 0 && {
+        initial_member_ids: selectedMembers.value.map(m => m.user_id),
+      }),
     }
     const ch = await createChannel(input)
     close()
@@ -137,6 +184,55 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   ]"
                 />
               </button>
+            </div>
+
+            <!-- Initial members -->
+            <div>
+              <label class="block text-xs font-heading font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+                Membros iniciais <span class="text-muted-foreground font-normal">(opcional)</span>
+              </label>
+              <!-- Selected members chips -->
+              <div v-if="selectedMembers.length > 0" class="flex flex-wrap gap-1.5 mb-2">
+                <span
+                  v-for="m in selectedMembers"
+                  :key="m.user_id"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary rounded-full text-xs font-heading text-foreground"
+                >
+                  {{ m.name || m.user_id }}
+                  <button
+                    type="button"
+                    class="text-muted-foreground hover:text-foreground ml-0.5"
+                    @click="removeMember(m.user_id)"
+                  >
+                    <svg class="h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </span>
+              </div>
+              <!-- Search input -->
+              <div class="relative">
+                <input
+                  v-model="memberQuery"
+                  type="text"
+                  placeholder="Pesquisar utilizadores..."
+                  class="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-heading text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
+                />
+                <ul
+                  v-if="memberResults.length > 0"
+                  class="absolute z-10 mt-1 w-full bg-card border border-border rounded-md shadow-lg max-h-40 overflow-y-auto"
+                >
+                  <li
+                    v-for="u in memberResults"
+                    :key="u.user_id"
+                    class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-secondary/50 text-sm font-heading text-foreground"
+                    @mousedown.prevent="selectMember(u)"
+                  >
+                    <UiAvatar :name="u.name || u.user_id" size="sm" />
+                    <span>{{ u.name || u.user_id }}</span>
+                  </li>
+                </ul>
+              </div>
             </div>
 
             <!-- Error -->

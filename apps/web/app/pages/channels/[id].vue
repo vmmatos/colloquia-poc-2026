@@ -107,7 +107,7 @@ const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value =
       <p class="text-muted-foreground font-body text-sm">{{ loadError }}</p>
     </div>
 
-    <template v-else>
+    <div v-else class="flex flex-col flex-1 min-h-0">
       <!-- Channel header -->
       <header class="h-14 flex items-center justify-between px-4 md:px-6 border-b border-border flex-shrink-0">
         <div class="flex items-center gap-2">
@@ -161,9 +161,11 @@ const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value =
           </p>
         </div>
 
-        <p v-if="messages.length === 0 && channel" class="text-muted-foreground font-body text-sm italic text-center py-12">
-          Sem mensagens ainda. Começa a conversa!
-        </p>
+        <div v-if="messages.length === 0 && channel" class="min-h-full flex items-center justify-center">
+          <p class="text-muted-foreground font-body text-sm italic text-center">
+            Sem mensagens ainda. Começa a conversa!
+          </p>
+        </div>
       </div>
 
       <!-- Message input -->
@@ -204,7 +206,7 @@ const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value =
           Modo agente activo — a resposta será gerada por LLM
         </p>
       </div>
-    </template>
+    </div>
 
     <!-- Manage Channel Modal -->
     <ManageChannelModal

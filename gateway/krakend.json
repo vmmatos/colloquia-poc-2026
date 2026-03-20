@@ -188,6 +188,7 @@
       "method": "GET",
       "output_encoding": "no-op",
       "input_headers": ["Authorization"],
+      "input_query_strings": ["limit", "offset"],
       "extra_config": {
         "auth/validator": {
           "alg": "RS256",
@@ -216,6 +217,7 @@
       "method": "GET",
       "output_encoding": "no-op",
       "input_headers": ["Authorization"],
+      "input_query_strings": ["q", "limit", "offset"],
       "extra_config": {
         "auth/validator": {
           "alg": "RS256",

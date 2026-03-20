@@ -281,7 +281,7 @@ function dismissToast(id: number) {
       :open="!!managingChannelId"
       :channel-id="managingChannelId"
       @close="managingChannelId = null"
-      @deleted="managingChannelId = null"
+      @deleted="() => { managingChannelId = null; navigateTo('/') }"
     />
 
     <!-- Message toasts -->

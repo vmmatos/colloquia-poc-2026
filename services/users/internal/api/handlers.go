@@ -88,7 +88,7 @@ type updateProfileRequest struct {
 }
 
 type userResponse struct {
-	ID        string `json:"id"`
+	ID        string `json:"user_id"`
 	Email     string `json:"email"`
 	Name      string `json:"name"`
 	Avatar    string `json:"avatar"`

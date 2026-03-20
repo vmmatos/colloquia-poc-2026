@@ -21,6 +21,7 @@ export interface CreateChannelInput {
   name: string
   description?: string
   is_private: boolean
+  initial_member_ids?: string[]
 }
 
 export interface AddMemberInput {

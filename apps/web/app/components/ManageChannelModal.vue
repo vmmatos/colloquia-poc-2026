@@ -18,15 +18,17 @@ const config = useRuntimeConfig()
 
 const channel = ref<Channel | null>(null)
 const members = ref<ChannelMember[]>([])
+const profileMap = ref<Record<string, UserProfile>>({})
 const myRole = ref<string>('')
 const activeTab = ref<'members' | 'settings'>('members')
 const loadError = ref('')
 
 // Add member form
-const lookupId = ref('')
-const lookedUpUser = ref<UserProfile | null>(null)
-const lookupError = ref('')
-const lookupLoading = ref(false)
+const memberSearch = ref('')
+const userResults = ref<UserProfile[]>([])
+const allUsers = ref<UserProfile[]>([])
+const userSearchLoading = ref(false)
+let userSearchTimer: ReturnType<typeof setTimeout> | null = null
 const addLoading = ref(false)
 const addError = ref('')
 
@@ -42,12 +44,13 @@ async function loadData() {
   if (!props.channelId) return
   loadError.value = ''
   members.value = []
+  profileMap.value = {}
   channel.value = null
   myRole.value = ''
   activeTab.value = 'members'
-  lookedUpUser.value = null
-  lookupId.value = ''
-  lookupError.value = ''
+  memberSearch.value = ''
+  userResults.value = []
+  allUsers.value = []
   addError.value = ''
   confirmDelete.value = false
 
@@ -62,10 +65,59 @@ async function loadData() {
     members.value = memberList
     const me = memberList.find(m => m.user_id === auth.value.user_id)
     myRole.value = me?.role ?? 'member'
+
+    const profiles = await Promise.all(
+      memberList.map(m =>
+        $fetch<UserProfile>(`${config.public.apiBase}/api/v1/users/${m.user_id}`, {
+          headers: { Authorization: `Bearer ${auth.value.access_token}` },
+        }).catch(() => null)
+      )
+    )
+    profileMap.value = Object.fromEntries(
+      profiles.flatMap((p, i) => p ? [[memberList[i].user_id, p]] : [])
+    )
+
+    // fetch all users for autocomplete (fire-and-forget)
+    $fetch<UserProfile[]>(`${config.public.apiBase}/api/v1/users`, {
+      headers: { Authorization: `Bearer ${auth.value.access_token}` },
+    }).then(res => { allUsers.value = res ?? [] }).catch(() => {})
   } catch {
     loadError.value = 'Erro ao carregar dados do canal.'
   }
 }
+
+const memberIds = computed(() => new Set(members.value.map(m => m.user_id)))
+
+const displayedUsers = computed(() => {
+  const base = memberSearch.value.length >= 3 ? userResults.value : allUsers.value
+  return base.filter(u => !memberIds.value.has(u.user_id))
+})
+
+watch(memberSearch, (query) => {
+  if (userSearchTimer) clearTimeout(userSearchTimer)
+  if (query.length === 0) {
+    userResults.value = []
+    return
+  }
+  if (query.length < 3) {
+    userResults.value = []
+    return
+  }
+  userSearchTimer = setTimeout(async () => {
+    userSearchLoading.value = true
+    try {
+      const res = await $fetch<UserProfile[]>(`${config.public.apiBase}/api/v1/users/search`, {
+        query: { q: query },
+        headers: { Authorization: `Bearer ${auth.value.access_token}` },
+      })
+      userResults.value = res ?? []
+    } catch {
+      userResults.value = []
+    } finally {
+      userSearchLoading.value = false
+    }
+  }, 300)
+})
 
 watch(() => props.open, (val) => {
   if (val) loadData()
@@ -79,33 +131,15 @@ function close() {
   emit('close')
 }
 
-async function doLookup() {
-  lookupError.value = ''
-  lookedUpUser.value = null
-  const id = lookupId.value.trim()
-  if (!id) return
-
-  lookupLoading.value = true
-  try {
-    lookedUpUser.value = await $fetch<UserProfile>(`${config.public.apiBase}/api/v1/users/${id}`, {
-      headers: { Authorization: `Bearer ${auth.value.access_token}` },
-    })
-  } catch {
-    lookupError.value = 'Utilizador não encontrado.'
-  } finally {
-    lookupLoading.value = false
-  }
-}
-
-async function doAddMember() {
-  if (!lookedUpUser.value) return
+async function doAddUser(user: UserProfile) {
   addError.value = ''
   addLoading.value = true
   try {
-    const newMember = await addMember(props.channelId, { user_id: lookedUpUser.value.user_id })
+    const newMember = await addMember(props.channelId, { user_id: user.user_id })
     members.value = [...members.value, newMember]
-    lookedUpUser.value = null
-    lookupId.value = ''
+    profileMap.value[user.user_id] = user
+    memberSearch.value = ''
+    userResults.value = []
   } catch (err: unknown) {
     const msg = (err as { data?: { error?: string } })?.data?.error
     addError.value = msg ?? 'Erro ao adicionar membro.'
@@ -229,13 +263,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 :key="m.user_id"
                 class="flex items-center gap-3 py-1.5 px-2 rounded-md hover:bg-secondary/30 group"
               >
-                <UiAvatar :name="m.user_id" size="sm" />
+                <UiAvatar :name="profileMap[m.user_id]?.name || m.user_id" size="sm" />
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-heading text-foreground truncate">{{ m.user_id }}</p>
+                  <p class="text-sm font-heading text-foreground truncate">{{ profileMap[m.user_id]?.name || m.user_id }}</p>
                 </div>
-                <span :class="['text-xs px-2 py-0.5 rounded-full font-heading', roleBadge(m.role).cls]">
-                  {{ roleBadge(m.role).label }}
-                </span>
                 <button
                   v-if="(myRole === 'owner' || myRole === 'admin') && m.user_id !== auth.user_id && m.role !== 'owner'"
                   :disabled="removingUserId === m.user_id"
@@ -244,6 +275,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 >
                   Remover
                 </button>
+                <span :class="['text-xs px-2 py-0.5 rounded-full font-heading', roleBadge(m.role).cls]">
+                  {{ roleBadge(m.role).label }}
+                </span>
               </li>
             </ul>
 
@@ -252,30 +286,35 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               <p class="text-xs font-heading font-medium text-muted-foreground uppercase tracking-wider mb-3">
                 Adicionar membro
               </p>
-              <div class="flex gap-2">
+              <div class="relative">
                 <input
-                  v-model="lookupId"
+                  v-model="memberSearch"
                   type="text"
-                  placeholder="User ID (UUID)"
-                  class="flex-1 bg-background border border-border rounded-md px-3 py-2 text-sm font-heading text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
-                  @keydown.enter="doLookup"
+                  placeholder="Pesquisar utilizadores..."
+                  class="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-heading text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
                 />
-                <UiButton variant="secondary" :loading="lookupLoading" @click="doLookup">
-                  Procurar
-                </UiButton>
-              </div>
-              <p v-if="lookupError" class="text-xs text-destructive font-body mt-1.5">{{ lookupError }}</p>
-
-              <!-- Lookup result -->
-              <div v-if="lookedUpUser" class="mt-3 flex items-center gap-3 p-3 bg-secondary/30 rounded-md">
-                <UiAvatar :name="lookedUpUser.name || lookedUpUser.user_id" size="sm" />
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-heading text-foreground truncate">{{ lookedUpUser.name || 'Sem nome' }}</p>
-                  <p class="text-xs font-body text-muted-foreground truncate">{{ lookedUpUser.user_id }}</p>
-                </div>
-                <UiButton :loading="addLoading" @click="doAddMember">
-                  Adicionar
-                </UiButton>
+                <!-- Dropdown -->
+                <ul
+                  v-if="displayedUsers.length > 0"
+                  class="absolute z-10 mt-1 w-full bg-card border border-border rounded-md shadow-lg max-h-48 overflow-y-auto"
+                >
+                  <li
+                    v-for="u in displayedUsers"
+                    :key="u.user_id"
+                    class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-secondary/50 text-sm font-heading text-foreground"
+                    @mousedown.prevent="doAddUser(u)"
+                  >
+                    <UiAvatar :name="u.name || u.user_id" size="sm" />
+                    <span class="flex-1 truncate">{{ u.name || u.user_id }}</span>
+                  </li>
+                </ul>
+                <!-- hint when query is 1-2 chars -->
+                <p
+                  v-else-if="memberSearch.length > 0 && memberSearch.length < 3"
+                  class="text-xs text-muted-foreground font-body mt-1.5"
+                >
+                  Escreve mais {{ 3 - memberSearch.length }} letra(s) para pesquisar…
+                </p>
               </div>
               <p v-if="addError" class="text-xs text-destructive font-body mt-1.5">{{ addError }}</p>
             </div>

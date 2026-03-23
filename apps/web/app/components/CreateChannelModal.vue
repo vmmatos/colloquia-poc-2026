@@ -82,6 +82,7 @@ async function submit() {
       name: trimmedName,
       description: description.value.trim() || undefined,
       is_private: isPrivate.value,
+      type: 'channel',
       ...(selectedMembers.value.length > 0 && {
         initial_member_ids: selectedMembers.value.map(m => m.user_id),
       }),

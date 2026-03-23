@@ -5,6 +5,7 @@ export interface Channel {
   is_private: boolean
   created_by: string
   archived: boolean
+  type: 'dm' | 'group' | 'channel'
   member_count: number
   created_at: number
   updated_at: number
@@ -21,6 +22,7 @@ export interface CreateChannelInput {
   name: string
   description?: string
   is_private: boolean
+  type: 'dm' | 'group' | 'channel'
   initial_member_ids?: string[]
 }
 

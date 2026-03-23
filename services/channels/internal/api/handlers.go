@@ -73,10 +73,15 @@ func bearerToken(c *gin.Context) (string, bool) {
 // ── Request / response types ──────────────────────────────────────────────────
 
 type createChannelRequest struct {
-	Name        string   `json:"name"        binding:"required"`
+	Name        string   `json:"name"               binding:"required"`
 	Description string   `json:"description"`
 	IsPrivate   bool     `json:"is_private"`
-	MemberIDs   []string `json:"member_ids"`
+	MemberIDs   []string `json:"initial_member_ids"`
+	Type        string   `json:"type"`
+}
+
+type createDMRequest struct {
+	OtherUserID string `json:"other_user_id" binding:"required"`
 }
 
 type addMemberRequest struct {
@@ -85,15 +90,17 @@ type addMemberRequest struct {
 }
 
 type channelResponse struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	IsPrivate   bool   `json:"is_private"`
-	CreatedBy   string `json:"created_by"`
-	Archived    bool   `json:"archived"`
-	MemberCount int32  `json:"member_count"`
-	CreatedAt   int64  `json:"created_at"`
-	UpdatedAt   int64  `json:"updated_at"`
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	IsPrivate   bool    `json:"is_private"`
+	CreatedBy   string  `json:"created_by"`
+	Archived    bool    `json:"archived"`
+	Type        string  `json:"type"`
+	DMKey       *string `json:"dm_key,omitempty"`
+	MemberCount int32   `json:"member_count"`
+	CreatedAt   int64   `json:"created_at"`
+	UpdatedAt   int64   `json:"updated_at"`
 }
 
 type memberResponse struct {
@@ -111,6 +118,8 @@ func toChannelResponse(ch *repository.ChannelRow) channelResponse {
 		IsPrivate:   ch.IsPrivate,
 		CreatedBy:   ch.CreatedBy.String(),
 		Archived:    ch.Archived,
+		Type:        ch.Type,
+		DMKey:       ch.DMKey,
 		MemberCount: ch.MemberCount,
 		CreatedAt:   ch.CreatedAt,
 		UpdatedAt:   ch.UpdatedAt,
@@ -138,6 +147,11 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 		return
 	}
 
+	channelType := req.Type
+	if channelType == "" {
+		channelType = "channel"
+	}
+
 	memberIDs := make([]uuid.UUID, 0, len(req.MemberIDs))
 	for _, s := range req.MemberIDs {
 		uid, err := uuid.Parse(s)
@@ -148,13 +162,42 @@ func (h *Handler) CreateChannel(c *gin.Context) {
 		memberIDs = append(memberIDs, uid)
 	}
 
-	ch, err := h.svc.CreateChannel(c.Request.Context(), req.Name, req.Description, req.IsPrivate, userID, memberIDs)
+	ch, err := h.svc.CreateChannel(c.Request.Context(), req.Name, req.Description, req.IsPrivate, channelType, userID, memberIDs)
 	if err != nil {
 		c.JSON(serviceErrorStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusCreated, toChannelResponse(ch))
+}
+
+// POST /api/v1/channels/dm
+func (h *Handler) CreateDM(c *gin.Context) {
+	userID := c.MustGet(userIDKey).(uuid.UUID)
+
+	var req createDMRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	otherUserID, err := uuid.Parse(req.OtherUserID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid other_user_id"})
+		return
+	}
+
+	ch, created, err := h.svc.CreateDM(c.Request.Context(), userID, otherUserID)
+	if err != nil {
+		c.JSON(serviceErrorStatus(err), gin.H{"error": err.Error()})
+		return
+	}
+
+	if created {
+		c.JSON(http.StatusCreated, toChannelResponse(ch))
+	} else {
+		c.JSON(http.StatusOK, toChannelResponse(ch))
+	}
 }
 
 // GET /api/v1/channels/me  — must be registered BEFORE /:id
@@ -300,7 +343,7 @@ func serviceErrorStatus(err error) int {
 		return http.StatusNotFound
 	case errors.Is(err, service.ErrChannelAlreadyExists), errors.Is(err, service.ErrMemberAlreadyExists):
 		return http.StatusConflict
-	case errors.Is(err, service.ErrPermissionDenied):
+	case errors.Is(err, service.ErrPermissionDenied), errors.Is(err, service.ErrCannotModifyDM):
 		return http.StatusForbidden
 	case errors.Is(err, service.ErrChannelArchived):
 		return http.StatusUnprocessableEntity

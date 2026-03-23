@@ -6,6 +6,7 @@ option go_package = "channels/internal/pb";
 
 service ChannelService {
   rpc CreateChannel(CreateChannelRequest)           returns (ChannelResponse);
+  rpc CreateDM(CreateDMRequest)                     returns (CreateDMResponse);
   rpc GetChannel(GetChannelRequest)                 returns (ChannelResponse);
   rpc DeleteChannel(DeleteChannelRequest)           returns (DeleteChannelResponse);
   rpc AddMember(AddMemberRequest)                   returns (MemberResponse);
@@ -26,6 +27,7 @@ message Channel {
   int32  member_count = 7;
   int64  created_at   = 8;
   int64  updated_at   = 9;
+  string type         = 10;
 }
 
 message Member {
@@ -43,6 +45,17 @@ message CreateChannelRequest {
   bool   is_private         = 3;
   string created_by         = 4;
   repeated string member_ids = 5;
+  string type               = 6;
+}
+
+message CreateDMRequest {
+  string requesting_user_id = 1;
+  string other_user_id      = 2;
+}
+
+message CreateDMResponse {
+  Channel channel = 1;
+  bool    created = 2;
 }
 
 message GetChannelRequest {

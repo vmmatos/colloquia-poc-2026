@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	ChannelService_CreateChannel_FullMethodName      = "/channels.ChannelService/CreateChannel"
+	ChannelService_CreateDM_FullMethodName           = "/channels.ChannelService/CreateDM"
 	ChannelService_GetChannel_FullMethodName         = "/channels.ChannelService/GetChannel"
 	ChannelService_DeleteChannel_FullMethodName      = "/channels.ChannelService/DeleteChannel"
 	ChannelService_AddMember_FullMethodName          = "/channels.ChannelService/AddMember"
@@ -33,6 +34,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ChannelServiceClient interface {
 	CreateChannel(ctx context.Context, in *CreateChannelRequest, opts ...grpc.CallOption) (*ChannelResponse, error)
+	CreateDM(ctx context.Context, in *CreateDMRequest, opts ...grpc.CallOption) (*CreateDMResponse, error)
 	GetChannel(ctx context.Context, in *GetChannelRequest, opts ...grpc.CallOption) (*ChannelResponse, error)
 	DeleteChannel(ctx context.Context, in *DeleteChannelRequest, opts ...grpc.CallOption) (*DeleteChannelResponse, error)
 	AddMember(ctx context.Context, in *AddMemberRequest, opts ...grpc.CallOption) (*MemberResponse, error)
@@ -53,6 +55,16 @@ func (c *channelServiceClient) CreateChannel(ctx context.Context, in *CreateChan
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ChannelResponse)
 	err := c.cc.Invoke(ctx, ChannelService_CreateChannel_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *channelServiceClient) CreateDM(ctx context.Context, in *CreateDMRequest, opts ...grpc.CallOption) (*CreateDMResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateDMResponse)
+	err := c.cc.Invoke(ctx, ChannelService_CreateDM_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -124,6 +136,7 @@ func (c *channelServiceClient) ListChannelMembers(ctx context.Context, in *ListC
 // for forward compatibility.
 type ChannelServiceServer interface {
 	CreateChannel(context.Context, *CreateChannelRequest) (*ChannelResponse, error)
+	CreateDM(context.Context, *CreateDMRequest) (*CreateDMResponse, error)
 	GetChannel(context.Context, *GetChannelRequest) (*ChannelResponse, error)
 	DeleteChannel(context.Context, *DeleteChannelRequest) (*DeleteChannelResponse, error)
 	AddMember(context.Context, *AddMemberRequest) (*MemberResponse, error)
@@ -142,6 +155,9 @@ type UnimplementedChannelServiceServer struct{}
 
 func (UnimplementedChannelServiceServer) CreateChannel(context.Context, *CreateChannelRequest) (*ChannelResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateChannel not implemented")
+}
+func (UnimplementedChannelServiceServer) CreateDM(context.Context, *CreateDMRequest) (*CreateDMResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateDM not implemented")
 }
 func (UnimplementedChannelServiceServer) GetChannel(context.Context, *GetChannelRequest) (*ChannelResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetChannel not implemented")
@@ -196,6 +212,24 @@ func _ChannelService_CreateChannel_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChannelServiceServer).CreateChannel(ctx, req.(*CreateChannelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChannelService_CreateDM_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateDMRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChannelServiceServer).CreateDM(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChannelService_CreateDM_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChannelServiceServer).CreateDM(ctx, req.(*CreateDMRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -318,6 +352,10 @@ var ChannelService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateChannel",
 			Handler:    _ChannelService_CreateChannel_Handler,
+		},
+		{
+			MethodName: "CreateDM",
+			Handler:    _ChannelService_CreateDM_Handler,
 		},
 		{
 			MethodName: "GetChannel",

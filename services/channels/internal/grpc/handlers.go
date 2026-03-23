@@ -36,12 +36,36 @@ func (h *ChannelsHandler) CreateChannel(ctx context.Context, req *pb.CreateChann
 		memberIDs = append(memberIDs, uid)
 	}
 
-	ch, err := h.svc.CreateChannel(ctx, req.GetName(), req.GetDescription(), req.GetIsPrivate(), createdBy, memberIDs)
+	channelType := req.GetType()
+	if channelType == "" {
+		channelType = "channel"
+	}
+
+	ch, err := h.svc.CreateChannel(ctx, req.GetName(), req.GetDescription(), req.GetIsPrivate(), channelType, createdBy, memberIDs)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
 
 	return &pb.ChannelResponse{Channel: toProtoChannel(ch)}, nil
+}
+
+func (h *ChannelsHandler) CreateDM(ctx context.Context, req *pb.CreateDMRequest) (*pb.CreateDMResponse, error) {
+	requestingUserID, err := uuid.Parse(req.GetRequestingUserId())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid requesting_user_id: %v", err)
+	}
+
+	otherUserID, err := uuid.Parse(req.GetOtherUserId())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid other_user_id: %v", err)
+	}
+
+	ch, created, err := h.svc.CreateDM(ctx, requestingUserID, otherUserID)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+
+	return &pb.CreateDMResponse{Channel: toProtoChannel(ch), Created: created}, nil
 }
 
 func (h *ChannelsHandler) GetChannel(ctx context.Context, req *pb.GetChannelRequest) (*pb.ChannelResponse, error) {
@@ -184,6 +208,7 @@ func toProtoChannel(ch *repository.ChannelRow) *pb.Channel {
 		MemberCount: ch.MemberCount,
 		CreatedAt:   ch.CreatedAt,
 		UpdatedAt:   ch.UpdatedAt,
+		Type:        ch.Type,
 	}
 }
 
@@ -212,6 +237,8 @@ func toGRPCError(err error) error {
 		return status.Errorf(codes.FailedPrecondition, "%v", err)
 	case errors.Is(err, service.ErrUserNotFound):
 		return status.Errorf(codes.NotFound, "%v", err)
+	case errors.Is(err, service.ErrCannotModifyDM):
+		return status.Errorf(codes.PermissionDenied, "%v", err)
 	default:
 		return status.Errorf(codes.Internal, "internal error")
 	}

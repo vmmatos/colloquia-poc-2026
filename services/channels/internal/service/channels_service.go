@@ -4,6 +4,7 @@ import (
 	"channels/internal/repository"
 	"channels/internal/usersclient"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 
@@ -20,6 +21,7 @@ var (
 	ErrPermissionDenied     = errors.New("permission denied")
 	ErrChannelArchived      = errors.New("channel is archived")
 	ErrUserNotFound         = errors.New("user not found")
+	ErrCannotModifyDM       = errors.New("cannot add or remove members from a DM channel")
 )
 
 type ChannelsService struct {
@@ -31,7 +33,22 @@ func NewChannelsService(repo repository.IChannelsRepository, userVal usersclient
 	return &ChannelsService{repo: repo, userVal: userVal}
 }
 
-func (s *ChannelsService) CreateChannel(ctx context.Context, name, description string, isPrivate bool, createdBy uuid.UUID, memberIDs []uuid.UUID) (*repository.ChannelRow, error) {
+func (s *ChannelsService) CreateChannel(ctx context.Context, name, description string, isPrivate bool, channelType string, createdBy uuid.UUID, memberIDs []uuid.UUID) (*repository.ChannelRow, error) {
+	if channelType == "" {
+		channelType = "channel"
+	}
+
+	switch channelType {
+	case "dm":
+		return nil, fmt.Errorf("use the CreateDM method to create DM channels")
+	case "group":
+		isPrivate = true
+	case "channel":
+		if name == "" {
+			return nil, fmt.Errorf("channel name is required")
+		}
+	}
+
 	if s.userVal != nil && len(memberIDs) > 0 {
 		toValidate := make([]string, 0, len(memberIDs))
 		for _, uid := range memberIDs {
@@ -49,7 +66,7 @@ func (s *ChannelsService) CreateChannel(ctx context.Context, name, description s
 		}
 	}
 
-	ch, err := s.repo.CreateChannelWithOwner(ctx, name, description, isPrivate, createdBy, memberIDs)
+	ch, err := s.repo.CreateChannelWithOwner(ctx, name, description, isPrivate, channelType, nil, createdBy, memberIDs)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return nil, ErrChannelAlreadyExists
@@ -57,6 +74,36 @@ func (s *ChannelsService) CreateChannel(ctx context.Context, name, description s
 		return nil, fmt.Errorf("create channel: %w", err)
 	}
 	return ch, nil
+}
+
+// CreateDM creates or retrieves an existing DM channel between two users.
+// Returns (channel, created, error) where created=false means an existing DM was returned.
+func (s *ChannelsService) CreateDM(ctx context.Context, creatorID, otherUserID uuid.UUID) (*repository.ChannelRow, bool, error) {
+	if s.userVal != nil {
+		if err := s.userVal.UsersExist(ctx, []string{otherUserID.String()}); err != nil {
+			if errors.Is(err, usersclient.ErrUserNotFound) {
+				return nil, false, ErrUserNotFound
+			}
+			// best-effort: continue if users service is down
+		}
+	}
+
+	dmKey := dmKeyFor(creatorID, otherUserID)
+	ch, err := s.repo.CreateChannelWithOwner(ctx, "", "", true, "dm", &dmKey, creatorID, []uuid.UUID{otherUserID})
+	if err != nil {
+		if isUniqueViolation(err) {
+			existing, err := s.repo.GetChannelByDMKey(ctx, dmKey)
+			if err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					return nil, false, ErrChannelNotFound
+				}
+				return nil, false, fmt.Errorf("get dm channel: %w", err)
+			}
+			return existing, false, nil
+		}
+		return nil, false, fmt.Errorf("create dm: %w", err)
+	}
+	return ch, true, nil
 }
 
 func (s *ChannelsService) GetChannel(ctx context.Context, channelID, requestingUserID uuid.UUID) (*repository.ChannelRow, error) {
@@ -99,6 +146,10 @@ func (s *ChannelsService) AddMember(ctx context.Context, channelID, userID uuid.
 			return nil, ErrChannelNotFound
 		}
 		return nil, fmt.Errorf("get channel: %w", err)
+	}
+
+	if ch.Type == "dm" {
+		return nil, ErrCannotModifyDM
 	}
 
 	if ch.Archived {
@@ -179,4 +230,15 @@ func (s *ChannelsService) requireOwnerOrAdmin(ctx context.Context, channelID, us
 func isUniqueViolation(err error) bool {
 	var pgErr *pgxerr.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}
+
+// dmKeyFor returns a canonical SHA-256 hex key for a DM between two users.
+// The smaller UUID string always comes first to ensure idempotency.
+func dmKeyFor(a, b uuid.UUID) string {
+	sa, sb := a.String(), b.String()
+	if sa > sb {
+		sa, sb = sb, sa
+	}
+	h := sha256.Sum256([]byte(sa + ":" + sb))
+	return fmt.Sprintf("%x", h)
 }

@@ -11,13 +11,15 @@ import (
 
 type Channel struct {
 	ID          uuid.UUID
-	Name        string
+	Name        pgtype.Text
 	Description string
 	IsPrivate   bool
 	CreatedBy   uuid.UUID
 	Archived    bool
 	CreatedAt   pgtype.Timestamp
 	UpdatedAt   pgtype.Timestamp
+	Type        string
+	DmKey       pgtype.Text
 }
 
 type ChannelMember struct {

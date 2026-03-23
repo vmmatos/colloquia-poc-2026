@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -23,17 +24,25 @@ func NewChannelsRepository(pool *pgxpool.Pool) *ChannelsRepository {
 }
 
 // CreateChannelWithOwner creates a channel, inserts the creator as 'owner', and adds any extra memberIDs in one transaction.
-func (r *ChannelsRepository) CreateChannelWithOwner(ctx context.Context, name, description string, isPrivate bool, createdBy uuid.UUID, memberIDs []uuid.UUID) (*repository.ChannelRow, error) {
+func (r *ChannelsRepository) CreateChannelWithOwner(ctx context.Context, name, description string, isPrivate bool, channelType string, dmKey *string, createdBy uuid.UUID, memberIDs []uuid.UUID) (*repository.ChannelRow, error) {
 	var channel sqlc.Channel
 
 	err := pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := r.queries.WithTx(tx)
 
+		sqlcName := pgtype.Text{String: name, Valid: name != ""}
+		var sqlcDMKey pgtype.Text
+		if dmKey != nil {
+			sqlcDMKey = pgtype.Text{String: *dmKey, Valid: true}
+		}
+
 		var err error
 		channel, err = q.CreateChannel(ctx, sqlc.CreateChannelParams{
-			Name:        name,
+			Name:        sqlcName,
 			Description: description,
 			IsPrivate:   isPrivate,
+			Type:        channelType,
+			DmKey:       sqlcDMKey,
 			CreatedBy:   createdBy,
 		})
 		if err != nil {
@@ -90,6 +99,20 @@ func (r *ChannelsRepository) GetChannel(ctx context.Context, channelID uuid.UUID
 	return toChannelRow(channel, count), nil
 }
 
+func (r *ChannelsRepository) GetChannelByDMKey(ctx context.Context, dmKey string) (*repository.ChannelRow, error) {
+	channel, err := r.queries.GetChannelByDMKey(ctx, pgtype.Text{String: dmKey, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+
+	count, err := r.queries.CountChannelMembers(ctx, channel.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return toChannelRow(channel, count), nil
+}
+
 func (r *ChannelsRepository) ArchiveChannel(ctx context.Context, channelID uuid.UUID) error {
 	return r.queries.ArchiveChannel(ctx, channelID)
 }
@@ -132,13 +155,20 @@ func (r *ChannelsRepository) ListUserChannels(ctx context.Context, userID uuid.U
 
 	result := make([]*repository.ChannelRow, len(rows))
 	for i, row := range rows {
+		var dmKey *string
+		if row.DmKey.Valid {
+			s := row.DmKey.String
+			dmKey = &s
+		}
 		result[i] = &repository.ChannelRow{
 			ID:          row.ID,
-			Name:        row.Name,
+			Name:        row.Name.String,
 			Description: row.Description,
 			IsPrivate:   row.IsPrivate,
 			CreatedBy:   row.CreatedBy,
 			Archived:    row.Archived,
+			Type:        row.Type,
+			DMKey:       dmKey,
 			MemberCount: row.MemberCount,
 			CreatedAt:   row.CreatedAt.Time.Unix(),
 			UpdatedAt:   row.UpdatedAt.Time.Unix(),
@@ -167,13 +197,20 @@ func (r *ChannelsRepository) CountChannelMembers(ctx context.Context, channelID 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 func toChannelRow(c sqlc.Channel, count int32) *repository.ChannelRow {
+	var dmKey *string
+	if c.DmKey.Valid {
+		s := c.DmKey.String
+		dmKey = &s
+	}
 	return &repository.ChannelRow{
 		ID:          c.ID,
-		Name:        c.Name,
+		Name:        c.Name.String,
 		Description: c.Description,
 		IsPrivate:   c.IsPrivate,
 		CreatedBy:   c.CreatedBy,
 		Archived:    c.Archived,
+		Type:        c.Type,
+		DMKey:       dmKey,
 		MemberCount: count,
 		CreatedAt:   c.CreatedAt.Time.Unix(),
 		UpdatedAt:   c.UpdatedAt.Time.Unix(),

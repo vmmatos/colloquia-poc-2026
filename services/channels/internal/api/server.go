@@ -30,7 +30,8 @@ func NewServer(svc *service.ChannelsService, cfg *config.Config) *Server {
 	v1 := router.Group("/api/v1/channels")
 	{
 		v1.POST("", jwtMw, h.CreateChannel)
-		v1.GET("/me", jwtMw, h.ListMyChannels)      // registered BEFORE /:id
+		v1.POST("/dm", jwtMw, h.CreateDM)
+		v1.GET("/me", jwtMw, h.ListMyChannels)
 		v1.GET("/:id", jwtMw, h.GetChannel)
 		v1.DELETE("/:id", jwtMw, h.DeleteChannel)
 		v1.POST("/:id/members", jwtMw, h.AddMember)

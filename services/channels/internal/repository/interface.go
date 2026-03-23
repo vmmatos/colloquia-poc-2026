@@ -14,6 +14,8 @@ type ChannelRow struct {
 	IsPrivate   bool
 	CreatedBy   uuid.UUID
 	Archived    bool
+	Type        string
+	DMKey       *string
 	MemberCount int32
 	CreatedAt   int64 // Unix timestamp
 	UpdatedAt   int64 // Unix timestamp
@@ -29,8 +31,9 @@ type MemberRow struct {
 
 type IChannelsRepository interface {
 	// Channel operations
-	CreateChannelWithOwner(ctx context.Context, name, description string, isPrivate bool, createdBy uuid.UUID, memberIDs []uuid.UUID) (*ChannelRow, error)
+	CreateChannelWithOwner(ctx context.Context, name, description string, isPrivate bool, channelType string, dmKey *string, createdBy uuid.UUID, memberIDs []uuid.UUID) (*ChannelRow, error)
 	GetChannel(ctx context.Context, channelID uuid.UUID) (*ChannelRow, error)
+	GetChannelByDMKey(ctx context.Context, dmKey string) (*ChannelRow, error)
 	ArchiveChannel(ctx context.Context, channelID uuid.UUID) error
 
 	// Member operations

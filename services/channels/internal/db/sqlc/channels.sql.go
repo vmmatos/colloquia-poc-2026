@@ -60,15 +60,17 @@ func (q *Queries) CountChannelMembers(ctx context.Context, channelID uuid.UUID) 
 }
 
 const createChannel = `-- name: CreateChannel :one
-INSERT INTO channels (name, description, is_private, created_by)
-VALUES ($1, $2, $3, $4)
-RETURNING id, name, description, is_private, created_by, archived, created_at, updated_at
+INSERT INTO channels (name, description, is_private, type, dm_key, created_by)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, name, description, is_private, created_by, archived, created_at, updated_at, type, dm_key
 `
 
 type CreateChannelParams struct {
-	Name        string
+	Name        pgtype.Text
 	Description string
 	IsPrivate   bool
+	Type        string
+	DmKey       pgtype.Text
 	CreatedBy   uuid.UUID
 }
 
@@ -77,6 +79,8 @@ func (q *Queries) CreateChannel(ctx context.Context, arg CreateChannelParams) (C
 		arg.Name,
 		arg.Description,
 		arg.IsPrivate,
+		arg.Type,
+		arg.DmKey,
 		arg.CreatedBy,
 	)
 	var i Channel
@@ -89,12 +93,36 @@ func (q *Queries) CreateChannel(ctx context.Context, arg CreateChannelParams) (C
 		&i.Archived,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Type,
+		&i.DmKey,
+	)
+	return i, err
+}
+
+const getChannelByDMKey = `-- name: GetChannelByDMKey :one
+SELECT id, name, description, is_private, created_by, archived, created_at, updated_at, type, dm_key FROM channels WHERE dm_key = $1 AND type = 'dm'
+`
+
+func (q *Queries) GetChannelByDMKey(ctx context.Context, dmKey pgtype.Text) (Channel, error) {
+	row := q.db.QueryRow(ctx, getChannelByDMKey, dmKey)
+	var i Channel
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.IsPrivate,
+		&i.CreatedBy,
+		&i.Archived,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Type,
+		&i.DmKey,
 	)
 	return i, err
 }
 
 const getChannelByID = `-- name: GetChannelByID :one
-SELECT id, name, description, is_private, created_by, archived, created_at, updated_at FROM channels
+SELECT id, name, description, is_private, created_by, archived, created_at, updated_at, type, dm_key FROM channels
 WHERE id = $1
 `
 
@@ -110,6 +138,8 @@ func (q *Queries) GetChannelByID(ctx context.Context, id uuid.UUID) (Channel, er
 		&i.Archived,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Type,
+		&i.DmKey,
 	)
 	return i, err
 }
@@ -169,7 +199,7 @@ func (q *Queries) ListChannelMembers(ctx context.Context, channelID uuid.UUID) (
 
 const listUserChannels = `-- name: ListUserChannels :many
 SELECT
-    c.id, c.name, c.description, c.is_private, c.created_by, c.archived, c.created_at, c.updated_at,
+    c.id, c.name, c.description, c.is_private, c.created_by, c.archived, c.created_at, c.updated_at, c.type, c.dm_key,
     (SELECT COUNT(*) FROM channel_members m WHERE m.channel_id = c.id)::int AS member_count
 FROM channels c
 JOIN channel_members cm ON c.id = cm.channel_id
@@ -179,13 +209,15 @@ ORDER BY c.created_at DESC
 
 type ListUserChannelsRow struct {
 	ID          uuid.UUID
-	Name        string
+	Name        pgtype.Text
 	Description string
 	IsPrivate   bool
 	CreatedBy   uuid.UUID
 	Archived    bool
 	CreatedAt   pgtype.Timestamp
 	UpdatedAt   pgtype.Timestamp
+	Type        string
+	DmKey       pgtype.Text
 	MemberCount int32
 }
 
@@ -207,6 +239,8 @@ func (q *Queries) ListUserChannels(ctx context.Context, userID uuid.UUID) ([]Lis
 			&i.Archived,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Type,
+			&i.DmKey,
 			&i.MemberCount,
 		); err != nil {
 			return nil, err

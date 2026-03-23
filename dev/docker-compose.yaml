@@ -175,9 +175,12 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    environment:
+      - FC_ENABLE=1
+      - FC_PARTIALS=/etc/krakend/partials
     volumes:
       - ../gateway:/etc/krakend:ro
-    command: ["run", "-c", "/etc/krakend/krakend.json"]
+    command: ["run", "-c", "/etc/krakend/krakend.tmpl"]
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8000/__health"]
       interval: 30s

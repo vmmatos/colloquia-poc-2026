@@ -1,11 +1,14 @@
 -- name: CreateChannel :one
-INSERT INTO channels (name, description, is_private, created_by)
-VALUES ($1, $2, $3, $4)
+INSERT INTO channels (name, description, is_private, type, dm_key, created_by)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: GetChannelByID :one
 SELECT * FROM channels
 WHERE id = $1;
+
+-- name: GetChannelByDMKey :one
+SELECT * FROM channels WHERE dm_key = $1 AND type = 'dm';
 
 -- name: ArchiveChannel :exec
 UPDATE channels

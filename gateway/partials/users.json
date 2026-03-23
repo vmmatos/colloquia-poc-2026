@@ -1,0 +1,146 @@
+{
+  "endpoint": "/api/v1/users",
+  "method": "GET",
+  "output_encoding": "no-op",
+  "input_headers": ["Authorization"],
+  "input_query_strings": ["limit", "offset"],
+  "extra_config": {
+    "auth/validator": {
+      "alg": "RS256",
+      "jwk_url": "http://auth-service:8081/.well-known/jwks.json",
+      "disable_jwk_security": true,
+      "cache": true,
+      "cache_duration": 900
+    },
+    "qos/ratelimit/router": {
+      "max_rate": 200,
+      "client_max_rate": 50,
+      "strategy": "ip"
+    }
+  },
+  "backend": [
+    {
+      "url_pattern": "/api/v1/users",
+      "host": ["http://users-service:8082"],
+      "method": "GET",
+      "encoding": "no-op"
+    }
+  ]
+},
+{
+  "endpoint": "/api/v1/users/search",
+  "method": "GET",
+  "output_encoding": "no-op",
+  "input_headers": ["Authorization"],
+  "input_query_strings": ["q", "limit", "offset"],
+  "extra_config": {
+    "auth/validator": {
+      "alg": "RS256",
+      "jwk_url": "http://auth-service:8081/.well-known/jwks.json",
+      "disable_jwk_security": true,
+      "cache": true,
+      "cache_duration": 900
+    },
+    "qos/ratelimit/router": {
+      "max_rate": 200,
+      "client_max_rate": 50,
+      "strategy": "ip"
+    }
+  },
+  "backend": [
+    {
+      "url_pattern": "/api/v1/users/search",
+      "host": ["http://users-service:8082"],
+      "method": "GET",
+      "encoding": "no-op"
+    }
+  ]
+},
+{
+  "endpoint": "/api/v1/users/{id}",
+  "method": "GET",
+  "output_encoding": "no-op",
+  "input_headers": [],
+  "extra_config": {
+    "qos/ratelimit/router": {
+      "max_rate": 200,
+      "client_max_rate": 50,
+      "strategy": "ip"
+    }
+  },
+  "backend": [
+    {
+      "url_pattern": "/api/v1/users/{id}",
+      "host": [
+        "http://users-service:8082"
+      ],
+      "method": "GET",
+      "encoding": "no-op"
+    }
+  ]
+},
+{
+  "endpoint": "/api/v1/users/me",
+  "method": "GET",
+  "output_encoding": "no-op",
+  "input_headers": [
+    "Authorization"
+  ],
+  "extra_config": {
+    "auth/validator": {
+      "alg": "RS256",
+      "jwk_url": "http://auth-service:8081/.well-known/jwks.json",
+      "disable_jwk_security": true,
+      "cache": true,
+      "cache_duration": 900
+    },
+    "qos/ratelimit/router": {
+      "max_rate": 100,
+      "client_max_rate": 30,
+      "strategy": "ip"
+    }
+  },
+  "backend": [
+    {
+      "url_pattern": "/api/v1/users/me",
+      "host": [
+        "http://users-service:8082"
+      ],
+      "method": "GET",
+      "encoding": "no-op"
+    }
+  ]
+},
+{
+  "endpoint": "/api/v1/users/me",
+  "method": "PATCH",
+  "output_encoding": "no-op",
+  "input_headers": [
+    "Authorization",
+    "Content-Type"
+  ],
+  "extra_config": {
+    "auth/validator": {
+      "alg": "RS256",
+      "jwk_url": "http://auth-service:8081/.well-known/jwks.json",
+      "disable_jwk_security": true,
+      "cache": true,
+      "cache_duration": 900
+    },
+    "qos/ratelimit/router": {
+      "max_rate": 60,
+      "client_max_rate": 10,
+      "strategy": "ip"
+    }
+  },
+  "backend": [
+    {
+      "url_pattern": "/api/v1/users/me",
+      "host": [
+        "http://users-service:8082"
+      ],
+      "method": "PATCH",
+      "encoding": "no-op"
+    }
+  ]
+}

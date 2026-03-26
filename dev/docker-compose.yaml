@@ -165,6 +165,62 @@ services:
 
   ## ── Channels Domain ---------------------------------------------------------------
 
+  ## ── Messaging Domain --------------------------------------------------------------
+  ## Messaging DB
+  messaging-db:
+    image: postgres:16-alpine
+    container_name: colloquia-messaging-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: colloquia
+      POSTGRES_PASSWORD: colloquia_dev_password
+      POSTGRES_DB: colloquia-messaging
+    ports:
+      - "5437:5432"
+    volumes:
+      - messaging-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U colloquia -d colloquia-messaging"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ## Messaging DB Migrations
+  messaging-migrate:
+    image: migrate/migrate:v4.18.1
+    container_name: colloquia-messaging-migrate
+    volumes:
+      - ../services/messaging/migrations:/migrations
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://colloquia:colloquia_dev_password@messaging-db:5432/colloquia-messaging?sslmode=disable"
+      - "up"
+    depends_on:
+      messaging-db:
+        condition: service_healthy
+    restart: on-failure
+
+  ## Messaging Service
+  messaging-service:
+    build:
+      context: ../services/messaging
+      dockerfile: Dockerfile
+    container_name: colloquia-messaging-service
+    restart: unless-stopped
+    env_file:
+      - .dev.env
+      - .secrets.env
+    ports:
+      - "50054:50054"
+      - "8084:8084"
+    depends_on:
+      messaging-migrate:
+        condition: service_completed_successfully
+      channels-service:
+        condition: service_started
+
+  ## ── Messaging Domain --------------------------------------------------------------
+
   ## ── Gateway -----------------------------------------------------------------------
   ## KrakenD API Gateway — single entry point for all frontend clients.
   ## In development the config is volume-mounted so changes take effect on restart
@@ -192,6 +248,8 @@ services:
       users-service:
         condition: service_started
       channels-service:
+        condition: service_started
+      messaging-service:
         condition: service_started
 
   ## ── Gateway -----------------------------------------------------------------------
@@ -234,4 +292,5 @@ volumes:
   auth-db-data:
   users-db-data:
   channels-db-data:
+  messaging-db-data:
   web-node-modules:

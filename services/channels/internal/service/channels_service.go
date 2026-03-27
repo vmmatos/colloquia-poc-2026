@@ -211,6 +211,17 @@ func (s *ChannelsService) ListChannelMembers(ctx context.Context, channelID uuid
 	return members, nil
 }
 
+func (s *ChannelsService) ValidateMembership(ctx context.Context, channelID, userID uuid.UUID) (bool, error) {
+	_, err := s.repo.GetMember(ctx, channelID, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("validate membership: %w", err)
+	}
+	return true, nil
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 func (s *ChannelsService) requireOwnerOrAdmin(ctx context.Context, channelID, userID uuid.UUID) error {

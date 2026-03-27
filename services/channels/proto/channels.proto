@@ -13,6 +13,7 @@ service ChannelService {
   rpc RemoveMember(RemoveMemberRequest)             returns (RemoveMemberResponse);
   rpc ListUserChannels(ListUserChannelsRequest)     returns (ListUserChannelsResponse);
   rpc ListChannelMembers(ListChannelMembersRequest) returns (ListChannelMembersResponse);
+  rpc ValidateMembership(ValidateMembershipRequest) returns (ValidateMembershipResponse);
 }
 
 // ── Channel messages ──────────────────────────────────────────────────────────
@@ -90,3 +91,6 @@ message MemberResponse           { Member member = 1; }
 message RemoveMemberResponse     { bool success = 1; }
 message ListUserChannelsResponse  { repeated Channel channels = 1; }
 message ListChannelMembersResponse { repeated Member members = 1; }
+
+message ValidateMembershipRequest  { string channel_id = 1; string user_id = 2; }
+message ValidateMembershipResponse { bool is_member = 1; }

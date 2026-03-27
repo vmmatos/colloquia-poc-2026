@@ -27,6 +27,7 @@ const (
 	ChannelService_RemoveMember_FullMethodName       = "/channels.ChannelService/RemoveMember"
 	ChannelService_ListUserChannels_FullMethodName   = "/channels.ChannelService/ListUserChannels"
 	ChannelService_ListChannelMembers_FullMethodName = "/channels.ChannelService/ListChannelMembers"
+	ChannelService_ValidateMembership_FullMethodName = "/channels.ChannelService/ValidateMembership"
 )
 
 // ChannelServiceClient is the client API for ChannelService service.
@@ -41,6 +42,7 @@ type ChannelServiceClient interface {
 	RemoveMember(ctx context.Context, in *RemoveMemberRequest, opts ...grpc.CallOption) (*RemoveMemberResponse, error)
 	ListUserChannels(ctx context.Context, in *ListUserChannelsRequest, opts ...grpc.CallOption) (*ListUserChannelsResponse, error)
 	ListChannelMembers(ctx context.Context, in *ListChannelMembersRequest, opts ...grpc.CallOption) (*ListChannelMembersResponse, error)
+	ValidateMembership(ctx context.Context, in *ValidateMembershipRequest, opts ...grpc.CallOption) (*ValidateMembershipResponse, error)
 }
 
 type channelServiceClient struct {
@@ -131,6 +133,16 @@ func (c *channelServiceClient) ListChannelMembers(ctx context.Context, in *ListC
 	return out, nil
 }
 
+func (c *channelServiceClient) ValidateMembership(ctx context.Context, in *ValidateMembershipRequest, opts ...grpc.CallOption) (*ValidateMembershipResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ValidateMembershipResponse)
+	err := c.cc.Invoke(ctx, ChannelService_ValidateMembership_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChannelServiceServer is the server API for ChannelService service.
 // All implementations must embed UnimplementedChannelServiceServer
 // for forward compatibility.
@@ -143,6 +155,7 @@ type ChannelServiceServer interface {
 	RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error)
 	ListUserChannels(context.Context, *ListUserChannelsRequest) (*ListUserChannelsResponse, error)
 	ListChannelMembers(context.Context, *ListChannelMembersRequest) (*ListChannelMembersResponse, error)
+	ValidateMembership(context.Context, *ValidateMembershipRequest) (*ValidateMembershipResponse, error)
 	mustEmbedUnimplementedChannelServiceServer()
 }
 
@@ -176,6 +189,9 @@ func (UnimplementedChannelServiceServer) ListUserChannels(context.Context, *List
 }
 func (UnimplementedChannelServiceServer) ListChannelMembers(context.Context, *ListChannelMembersRequest) (*ListChannelMembersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListChannelMembers not implemented")
+}
+func (UnimplementedChannelServiceServer) ValidateMembership(context.Context, *ValidateMembershipRequest) (*ValidateMembershipResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ValidateMembership not implemented")
 }
 func (UnimplementedChannelServiceServer) mustEmbedUnimplementedChannelServiceServer() {}
 func (UnimplementedChannelServiceServer) testEmbeddedByValue()                        {}
@@ -342,6 +358,24 @@ func _ChannelService_ListChannelMembers_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChannelService_ValidateMembership_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ValidateMembershipRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChannelServiceServer).ValidateMembership(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChannelService_ValidateMembership_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChannelServiceServer).ValidateMembership(ctx, req.(*ValidateMembershipRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChannelService_ServiceDesc is the grpc.ServiceDesc for ChannelService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -380,6 +414,10 @@ var ChannelService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListChannelMembers",
 			Handler:    _ChannelService_ListChannelMembers_Handler,
+		},
+		{
+			MethodName: "ValidateMembership",
+			Handler:    _ChannelService_ValidateMembership_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

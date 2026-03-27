@@ -1,0 +1,70 @@
+{
+  "endpoint": "/api/v1/messages",
+  "method": "POST",
+  "output_encoding": "no-op",
+  "input_headers": [
+    "Authorization",
+    "Content-Type"
+  ],
+  "extra_config": {
+    "auth/validator": {
+      "alg": "RS256",
+      "jwk_url": "http://auth-service:8081/.well-known/jwks.json",
+      "disable_jwk_security": true,
+      "cache": true,
+      "cache_duration": 900
+    },
+    "qos/ratelimit/router": {
+      "max_rate": 200,
+      "client_max_rate": 30,
+      "strategy": "ip"
+    }
+  },
+  "backend": [
+    {
+      "url_pattern": "/api/v1/messages",
+      "host": [
+        "http://messaging-service:8084"
+      ],
+      "method": "POST",
+      "encoding": "no-op"
+    }
+  ]
+},
+{
+  "endpoint": "/api/v1/messages",
+  "method": "GET",
+  "output_encoding": "no-op",
+  "input_headers": [
+    "Authorization"
+  ],
+  "input_query_strings": [
+    "channel_id",
+    "before_id",
+    "limit"
+  ],
+  "extra_config": {
+    "auth/validator": {
+      "alg": "RS256",
+      "jwk_url": "http://auth-service:8081/.well-known/jwks.json",
+      "disable_jwk_security": true,
+      "cache": true,
+      "cache_duration": 900
+    },
+    "qos/ratelimit/router": {
+      "max_rate": 300,
+      "client_max_rate": 60,
+      "strategy": "ip"
+    }
+  },
+  "backend": [
+    {
+      "url_pattern": "/api/v1/messages",
+      "host": [
+        "http://messaging-service:8084"
+      ],
+      "method": "GET",
+      "encoding": "no-op"
+    }
+  ]
+}

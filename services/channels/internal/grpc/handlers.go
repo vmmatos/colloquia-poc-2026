@@ -195,6 +195,25 @@ func (h *ChannelsHandler) ListChannelMembers(ctx context.Context, req *pb.ListCh
 	return &pb.ListChannelMembersResponse{Members: result}, nil
 }
 
+func (h *ChannelsHandler) ValidateMembership(ctx context.Context, req *pb.ValidateMembershipRequest) (*pb.ValidateMembershipResponse, error) {
+	channelID, err := uuid.Parse(req.GetChannelId())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid channel_id: %v", err)
+	}
+
+	userID, err := uuid.Parse(req.GetUserId())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid user_id: %v", err)
+	}
+
+	isMember, err := h.svc.ValidateMembership(ctx, channelID, userID)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+
+	return &pb.ValidateMembershipResponse{IsMember: isMember}, nil
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 func toProtoChannel(ch *repository.ChannelRow) *pb.Channel {

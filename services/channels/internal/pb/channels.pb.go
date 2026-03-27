@@ -977,6 +977,102 @@ func (x *ListChannelMembersResponse) GetMembers() []*Member {
 	return nil
 }
 
+type ValidateMembershipRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ChannelId     string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ValidateMembershipRequest) Reset() {
+	*x = ValidateMembershipRequest{}
+	mi := &file_proto_channels_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidateMembershipRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidateMembershipRequest) ProtoMessage() {}
+
+func (x *ValidateMembershipRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_channels_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidateMembershipRequest.ProtoReflect.Descriptor instead.
+func (*ValidateMembershipRequest) Descriptor() ([]byte, []int) {
+	return file_proto_channels_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ValidateMembershipRequest) GetChannelId() string {
+	if x != nil {
+		return x.ChannelId
+	}
+	return ""
+}
+
+func (x *ValidateMembershipRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type ValidateMembershipResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	IsMember      bool                   `protobuf:"varint,1,opt,name=is_member,json=isMember,proto3" json:"is_member,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ValidateMembershipResponse) Reset() {
+	*x = ValidateMembershipResponse{}
+	mi := &file_proto_channels_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidateMembershipResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidateMembershipResponse) ProtoMessage() {}
+
+func (x *ValidateMembershipResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_channels_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidateMembershipResponse.ProtoReflect.Descriptor instead.
+func (*ValidateMembershipResponse) Descriptor() ([]byte, []int) {
+	return file_proto_channels_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *ValidateMembershipResponse) GetIsMember() bool {
+	if x != nil {
+		return x.IsMember
+	}
+	return false
+}
+
 var File_proto_channels_proto protoreflect.FileDescriptor
 
 const file_proto_channels_proto_rawDesc = "" +
@@ -1055,7 +1151,13 @@ const file_proto_channels_proto_rawDesc = "" +
 	"\x18ListUserChannelsResponse\x12-\n" +
 	"\bchannels\x18\x01 \x03(\v2\x11.channels.ChannelR\bchannels\"H\n" +
 	"\x1aListChannelMembersResponse\x12*\n" +
-	"\amembers\x18\x01 \x03(\v2\x10.channels.MemberR\amembers2\x85\x05\n" +
+	"\amembers\x18\x01 \x03(\v2\x10.channels.MemberR\amembers\"S\n" +
+	"\x19ValidateMembershipRequest\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"9\n" +
+	"\x1aValidateMembershipResponse\x12\x1b\n" +
+	"\tis_member\x18\x01 \x01(\bR\bisMember2\xe6\x05\n" +
 	"\x0eChannelService\x12J\n" +
 	"\rCreateChannel\x12\x1e.channels.CreateChannelRequest\x1a\x19.channels.ChannelResponse\x12A\n" +
 	"\bCreateDM\x12\x19.channels.CreateDMRequest\x1a\x1a.channels.CreateDMResponse\x12D\n" +
@@ -1065,7 +1167,8 @@ const file_proto_channels_proto_rawDesc = "" +
 	"\tAddMember\x12\x1a.channels.AddMemberRequest\x1a\x18.channels.MemberResponse\x12M\n" +
 	"\fRemoveMember\x12\x1d.channels.RemoveMemberRequest\x1a\x1e.channels.RemoveMemberResponse\x12Y\n" +
 	"\x10ListUserChannels\x12!.channels.ListUserChannelsRequest\x1a\".channels.ListUserChannelsResponse\x12_\n" +
-	"\x12ListChannelMembers\x12#.channels.ListChannelMembersRequest\x1a$.channels.ListChannelMembersResponseB\x16Z\x14channels/internal/pbb\x06proto3"
+	"\x12ListChannelMembers\x12#.channels.ListChannelMembersRequest\x1a$.channels.ListChannelMembersResponse\x12_\n" +
+	"\x12ValidateMembership\x12#.channels.ValidateMembershipRequest\x1a$.channels.ValidateMembershipResponseB\x16Z\x14channels/internal/pbb\x06proto3"
 
 var (
 	file_proto_channels_proto_rawDescOnce sync.Once
@@ -1079,7 +1182,7 @@ func file_proto_channels_proto_rawDescGZIP() []byte {
 	return file_proto_channels_proto_rawDescData
 }
 
-var file_proto_channels_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_proto_channels_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_proto_channels_proto_goTypes = []any{
 	(*Channel)(nil),                    // 0: channels.Channel
 	(*Member)(nil),                     // 1: channels.Member
@@ -1098,6 +1201,8 @@ var file_proto_channels_proto_goTypes = []any{
 	(*RemoveMemberResponse)(nil),       // 14: channels.RemoveMemberResponse
 	(*ListUserChannelsResponse)(nil),   // 15: channels.ListUserChannelsResponse
 	(*ListChannelMembersResponse)(nil), // 16: channels.ListChannelMembersResponse
+	(*ValidateMembershipRequest)(nil),  // 17: channels.ValidateMembershipRequest
+	(*ValidateMembershipResponse)(nil), // 18: channels.ValidateMembershipResponse
 }
 var file_proto_channels_proto_depIdxs = []int32{
 	0,  // 0: channels.CreateDMResponse.channel:type_name -> channels.Channel
@@ -1113,16 +1218,18 @@ var file_proto_channels_proto_depIdxs = []int32{
 	8,  // 10: channels.ChannelService.RemoveMember:input_type -> channels.RemoveMemberRequest
 	9,  // 11: channels.ChannelService.ListUserChannels:input_type -> channels.ListUserChannelsRequest
 	10, // 12: channels.ChannelService.ListChannelMembers:input_type -> channels.ListChannelMembersRequest
-	11, // 13: channels.ChannelService.CreateChannel:output_type -> channels.ChannelResponse
-	4,  // 14: channels.ChannelService.CreateDM:output_type -> channels.CreateDMResponse
-	11, // 15: channels.ChannelService.GetChannel:output_type -> channels.ChannelResponse
-	12, // 16: channels.ChannelService.DeleteChannel:output_type -> channels.DeleteChannelResponse
-	13, // 17: channels.ChannelService.AddMember:output_type -> channels.MemberResponse
-	14, // 18: channels.ChannelService.RemoveMember:output_type -> channels.RemoveMemberResponse
-	15, // 19: channels.ChannelService.ListUserChannels:output_type -> channels.ListUserChannelsResponse
-	16, // 20: channels.ChannelService.ListChannelMembers:output_type -> channels.ListChannelMembersResponse
-	13, // [13:21] is the sub-list for method output_type
-	5,  // [5:13] is the sub-list for method input_type
+	17, // 13: channels.ChannelService.ValidateMembership:input_type -> channels.ValidateMembershipRequest
+	11, // 14: channels.ChannelService.CreateChannel:output_type -> channels.ChannelResponse
+	4,  // 15: channels.ChannelService.CreateDM:output_type -> channels.CreateDMResponse
+	11, // 16: channels.ChannelService.GetChannel:output_type -> channels.ChannelResponse
+	12, // 17: channels.ChannelService.DeleteChannel:output_type -> channels.DeleteChannelResponse
+	13, // 18: channels.ChannelService.AddMember:output_type -> channels.MemberResponse
+	14, // 19: channels.ChannelService.RemoveMember:output_type -> channels.RemoveMemberResponse
+	15, // 20: channels.ChannelService.ListUserChannels:output_type -> channels.ListUserChannelsResponse
+	16, // 21: channels.ChannelService.ListChannelMembers:output_type -> channels.ListChannelMembersResponse
+	18, // 22: channels.ChannelService.ValidateMembership:output_type -> channels.ValidateMembershipResponse
+	14, // [14:23] is the sub-list for method output_type
+	5,  // [5:14] is the sub-list for method input_type
 	5,  // [5:5] is the sub-list for extension type_name
 	5,  // [5:5] is the sub-list for extension extendee
 	0,  // [0:5] is the sub-list for field type_name
@@ -1139,7 +1246,7 @@ func file_proto_channels_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_channels_proto_rawDesc), len(file_proto_channels_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

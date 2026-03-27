@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package channels_client;
+
+option go_package = "messaging/internal/channelsclient";
+
+service ChannelService {
+  rpc ValidateMembership(ValidateMembershipRequest) returns (ValidateMembershipResponse);
+}
+
+message ValidateMembershipRequest {
+  string channel_id = 1;
+  string user_id    = 2;
+}
+
+message ValidateMembershipResponse {
+  bool is_member = 1;
+}

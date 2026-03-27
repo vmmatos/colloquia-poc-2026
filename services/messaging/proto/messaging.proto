@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package messaging;
+
+option go_package = "messaging/internal/pb";
+
+service MessagingService {
+  rpc SendMessage(SendMessageRequest) returns (MessageResponse);
+  rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse);
+}
+
+// ── Message ───────────────────────────────────────────────────────────────────
+
+message Message {
+  string id         = 1;
+  string channel_id = 2;
+  string user_id    = 3;
+  string content    = 4;
+  int64  created_at = 5;
+}
+
+// ── Request / Response messages ───────────────────────────────────────────────
+
+message SendMessageRequest {
+  string channel_id = 1;
+  string user_id    = 2;
+  string content    = 3;
+}
+
+message MessageResponse { Message message = 1; }
+
+message GetMessagesRequest {
+  string channel_id = 1;
+  string before_id  = 2; // optional cursor; empty = first page
+  int32  limit      = 3; // 0 → default 50, max 100
+}
+
+message GetMessagesResponse { repeated Message messages = 1; }

@@ -1,7 +1,6 @@
 import type { AuthState, AuthResponse, UserProfile, ValidateTokenResponse } from '../../shared/types/auth'
 
 export function useAuth() {
-  const config = useRuntimeConfig()
   const auth = useState<AuthState>('auth', () => ({
     user_id: null,
     access_token: null,
@@ -53,13 +52,13 @@ export function useAuth() {
   }
 
   async function getProfile(): Promise<UserProfile> {
-    return await $fetch<UserProfile>(`${config.public.apiBase}/api/v1/users/me`, {
+    return await $fetch<UserProfile>('/api/users/me', {
       headers: { Authorization: `Bearer ${auth.value.access_token}` },
     })
   }
 
   async function validateToken(): Promise<ValidateTokenResponse> {
-    return await $fetch<ValidateTokenResponse>(`${config.public.apiBase}/api/v1/auth/me`, {
+    return await $fetch<ValidateTokenResponse>('/api/v1/auth/me', {
       headers: { Authorization: `Bearer ${auth.value.access_token}` },
     })
   }

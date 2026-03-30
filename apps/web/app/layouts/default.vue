@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { Toast } from '~/components/MessageToast.vue'
+import type { SseEvent } from '~/composables/useSSE'
 
 const { auth, logout, getProfile } = useAuth()
 useTokenRefresh()
 const isMobile = useIsMobile()
 const { addNotification } = useNotifications()
 const { channels, fetchMyChannels } = useChannels()
+const { resolveUser } = useUsersCache()
 
 const displayName = ref('')
 const showProfile = ref(false)
@@ -14,13 +16,67 @@ const showCreateChannel = ref(false)
 const managingChannelId = ref<string | null>(null)
 
 const dms = reactive([
-  { id: 'alice', label: 'Alice', online: true, unread: 2 },
+  { id: 'alice', label: 'Alice', online: true, unread: 0 },
   { id: 'bob', label: 'Bob', online: true, unread: 0 },
   { id: 'charlie', label: 'Charlie', online: false, unread: 0 },
 ])
 
 const channelsOpen = ref(true)
 const dmsOpen = ref(true)
+const toasts = ref<Toast[]>([])
+const unreadCounts = reactive<Record<string, number>>({})
+
+// ── SSE ────────────────────────────────────────────────────────────────────────
+
+const route = useRoute()
+const activeChannelId = computed(() => {
+  const id = route.params.id
+  return typeof id === 'string' ? id : null
+})
+
+const activeChannelHandler = ref<((e: SseEvent) => void) | null>(null)
+provide('registerChannelHandler', (fn: ((e: SseEvent) => void) | null) => {
+  activeChannelHandler.value = fn
+})
+
+function onSseMessage(event: SseEvent) {
+  const isViewing = event.channel_id === activeChannelId.value
+
+  if (isViewing && activeChannelHandler.value) {
+    activeChannelHandler.value(event)
+    return
+  }
+
+  // Canal em background → contagem de não lidos + notificação + toast
+  unreadCounts[event.channel_id] = (unreadCounts[event.channel_id] ?? 0) + 1
+  const channelName = channels.value.find(c => c.id === event.channel_id)?.name ?? event.channel_id
+  addNotification({
+    type: 'message',
+    title: `Nova mensagem em #${channelName}`,
+    body: event.content.slice(0, 80),
+    time: 'agora',
+    channelId: event.channel_id,
+  })
+
+  const toastId = Date.now()
+  toasts.value.push({
+    id: toastId,
+    author: resolveUser(event.user_id),
+    preview: event.content.slice(0, 60),
+    channel: `#${channelName}`,
+  })
+  setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== toastId) }, 3500)
+}
+
+const sse = useSSE({ activeChannelId, onMessage: onSseMessage })
+
+watch(activeChannelId, (id) => {
+  if (id) unreadCounts[id] = 0
+}, { immediate: true })
+
+// ── Lifecycle ──────────────────────────────────────────────────────────────────
+
+let channelPollTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(async () => {
   try {
@@ -32,10 +88,31 @@ onMounted(async () => {
 
   try {
     await fetchMyChannels()
+    sse.subscribeToChannels(channels.value.map(c => c.id))
   } catch {
     // channels might not be available
   }
+
+  channelPollTimer = setInterval(() => fetchMyChannels().catch(() => {}), 30_000)
 })
+
+onUnmounted(() => {
+  sse.closeAll()
+  if (channelPollTimer) clearInterval(channelPollTimer)
+})
+
+watch(channels, (newChannels) => {
+  sse.subscribeToChannels(newChannels.map(c => c.id))
+}, { deep: false })
+
+watch(() => auth.value.access_token, (token) => {
+  if (token && channels.value.length > 0) {
+    sse.closeAll()
+    nextTick(() => sse.subscribeToChannels(channels.value.map(c => c.id)))
+  }
+})
+
+// ── Actions ────────────────────────────────────────────────────────────────────
 
 async function handleLogout() {
   try { await logout() } catch { /* ignore */ }
@@ -55,38 +132,6 @@ async function onProfileClose() {
     // ignore
   }
 }
-
-// ---- Simulated incoming DM messages ----
-const SIMULATED = [
-  { author: 'Alice', body: '@you o que achas desta proposta?', dmId: 'alice', type: 'mention' as const },
-  { author: 'Bob',   body: 'Alguém reviu o PR #42?',          dmId: 'bob',   type: 'message' as const },
-]
-
-const toasts = ref<Toast[]>([])
-let simIdx = 0
-
-onMounted(() => {
-  const timer = setInterval(() => {
-    const sim = SIMULATED[simIdx % SIMULATED.length]
-    simIdx++
-
-    const dm = dms.find(d => d.id === sim.dmId)
-    if (dm) dm.unread++
-
-    addNotification({
-      type: sim.type,
-      title: `${sim.author} (mensagem directa)`,
-      body: sim.body,
-      time: 'agora',
-    })
-
-    const id = Date.now()
-    toasts.value.push({ id, author: sim.author, preview: sim.body.slice(0, 60), channel: sim.author })
-    setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id) }, 3500)
-  }, 8000)
-
-  onUnmounted(() => clearInterval(timer))
-})
 
 function dismissToast(id: number) {
   toasts.value = toasts.value.filter(t => t.id !== id)
@@ -161,6 +206,12 @@ function dismissToast(id: number) {
                 >
                   <span class="text-muted-foreground">#</span>
                   <span class="flex-1 truncate">{{ ch.name }}</span>
+                  <span
+                    v-if="(unreadCounts[ch.id] ?? 0) > 0"
+                    class="ml-auto w-4 h-4 rounded-full bg-primary text-primary-foreground text-xs font-heading font-semibold flex items-center justify-center flex-shrink-0"
+                  >
+                    {{ (unreadCounts[ch.id] ?? 0) > 9 ? '9+' : unreadCounts[ch.id] }}
+                  </span>
                 </NuxtLink>
                 <button
                   class="opacity-0 group-hover:opacity-100 px-2 text-muted-foreground hover:text-foreground transition-opacity flex-shrink-0"

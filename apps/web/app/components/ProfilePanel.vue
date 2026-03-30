@@ -7,7 +7,6 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const config = useRuntimeConfig()
 const { auth, getProfile, refreshToken } = useAuth()
 
 const displayName = ref('')
@@ -33,7 +32,7 @@ watch(() => props.open, async (val) => {
 })
 
 async function patchProfile() {
-  await $fetch(`${config.public.apiBase}/api/v1/users/me`, {
+  await $fetch('/api/users/me', {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${auth.value.access_token}` },
     body: { name: displayName.value, bio: bio.value },

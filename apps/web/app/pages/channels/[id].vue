@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import type { Channel, ChannelMember } from '../../../shared/types/channels'
+import type { Message } from '~/composables/useMessaging'
+import type { SseEvent } from '~/composables/useSSE'
 
 definePageMeta({ middleware: 'auth' })
 
 const { auth } = useAuth()
 const { fetchChannel, fetchMembers } = useChannels()
+const { fetchMessages, sendMessage: apiSendMessage } = useMessaging()
+const { resolveUser, prefetchUsers } = useUsersCache()
 const openSidebar = inject<() => void>('openSidebar')
+const registerChannelHandler = inject<(fn: ((e: SseEvent) => void) | null) => void>('registerChannelHandler')
 const route = useRoute()
 
 const channelId = computed(() => route.params.id as string)
@@ -14,9 +19,10 @@ const channel = ref<Channel | null>(null)
 const myRole = ref<string>('')
 const showManage = ref(false)
 const loadError = ref('')
+const isSending = ref(false)
 
-interface Message {
-  id: number
+interface DisplayMessage {
+  id: string
   userId: string
   author: string
   text: string
@@ -24,7 +30,7 @@ interface Message {
   isAgent?: boolean
 }
 
-const messages = ref<Message[]>([])
+const messages = ref<DisplayMessage[]>([])
 const input = ref('')
 const isAgentMode = computed(() => input.value.startsWith('@llm'))
 const messagesEl = ref<HTMLElement | null>(null)
@@ -35,7 +41,21 @@ function scrollToBottom() {
   })
 }
 
-watch(messages, scrollToBottom, { flush: 'post' })
+watch(() => messages.value.length, scrollToBottom, { flush: 'post' })
+
+function formatTime(unixSeconds: number): string {
+  return new Date(unixSeconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+function toDisplay(m: Message): DisplayMessage {
+  return {
+    id: m.id,
+    userId: m.user_id,
+    author: resolveUser(m.user_id),
+    text: m.content,
+    time: formatTime(m.created_at),
+  }
+}
 
 async function loadChannel() {
   loadError.value = ''
@@ -44,13 +64,17 @@ async function loadChannel() {
   messages.value = []
 
   try {
-    const [ch, memberList] = await Promise.all([
+    const [ch, memberList, history] = await Promise.all([
       fetchChannel(channelId.value),
       fetchMembers(channelId.value),
+      fetchMessages(channelId.value),
     ])
     channel.value = ch
-    const me = (memberList as ChannelMember[]).find(m => m.user_id === auth.value.user_id)
+    const members = memberList as ChannelMember[]
+    const me = members.find(m => m.user_id === auth.value.user_id)
     myRole.value = me?.role ?? ''
+    await prefetchUsers(members.map(m => m.user_id))
+    messages.value = history.map(toDisplay)
   } catch {
     loadError.value = 'Canal não encontrado ou sem acesso.'
   }
@@ -58,28 +82,41 @@ async function loadChannel() {
 
 onMounted(() => {
   loadChannel()
-  scrollToBottom()
+  registerChannelHandler?.((event) => {
+    if (messages.value.some(m => m.id === event.id)) return // dedup com optimistic
+    messages.value.push({
+      id: event.id,
+      userId: event.user_id,
+      author: resolveUser(event.user_id),
+      text: event.content,
+      time: formatTime(event.created_at),
+    })
+  })
+})
+
+onUnmounted(() => {
+  registerChannelHandler?.(null)
 })
 
 watch(channelId, loadChannel)
 
-function sendMessage() {
+async function sendMessage() {
   const text = input.value.trim()
-  if (!text) return
+  if (!text || isSending.value) return
 
-  messages.value.push({
-    id: Date.now(),
-    userId: auth.value.user_id || 'me',
-    author: 'Tu',
-    text,
-    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-  })
-  input.value = ''
-
+  // Mock do agente LLM mantém-se local
   if (text.startsWith('@llm')) {
+    messages.value.push({
+      id: `local-${Date.now()}`,
+      userId: auth.value.user_id || 'me',
+      author: 'Tu',
+      text,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    })
+    input.value = ''
     setTimeout(() => {
       messages.value.push({
-        id: Date.now() + 1,
+        id: `local-${Date.now() + 1}`,
         userId: 'llm',
         author: 'LLM',
         text: 'Analisando o contexto da conversa. Esta é uma resposta simulada do agente de IA — a integração real estará disponível em breve.',
@@ -87,6 +124,17 @@ function sendMessage() {
         isAgent: true,
       })
     }, 800)
+    return
+  }
+
+  isSending.value = true
+  try {
+    await apiSendMessage(channelId.value, text)
+    input.value = ''
+  } catch {
+    // Falha silenciosa no POC — input não é limpo
+  } finally {
+    isSending.value = false
   }
 }
 
@@ -168,8 +216,13 @@ const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value =
         </div>
       </div>
 
+      <!-- Archived channel banner -->
+      <div v-if="channel?.archived" class="px-4 md:px-6 py-2 text-xs text-muted-foreground bg-surface border-t border-border font-body italic">
+        Este canal está arquivado. Não é possível enviar mensagens.
+      </div>
+
       <!-- Message input -->
-      <div class="px-4 md:px-6 pb-4 pt-2 flex-shrink-0">
+      <div v-if="!channel?.archived" class="px-4 md:px-6 pb-4 pt-2 flex-shrink-0">
         <div
           :class="[
             'flex items-end gap-2 rounded-lg border bg-surface px-4 py-3 transition-all',
@@ -192,8 +245,8 @@ const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value =
             @input="($event.target as HTMLTextAreaElement).style.height = 'auto'; ($event.target as HTMLTextAreaElement).style.height = ($event.target as HTMLTextAreaElement).scrollHeight + 'px'"
           />
           <button
-            :disabled="!input.trim()"
-            :class="['text-muted-foreground transition-colors flex-shrink-0 pb-0.5', input.trim() ? 'hover:text-primary' : 'opacity-30']"
+            :disabled="!input.trim() || isSending"
+            :class="['text-muted-foreground transition-colors flex-shrink-0 pb-0.5', input.trim() && !isSending ? 'hover:text-primary' : 'opacity-30']"
             @click="sendMessage"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

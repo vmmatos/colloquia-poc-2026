@@ -121,15 +121,15 @@ var File_proto_channels_client_proto protoreflect.FileDescriptor
 
 const file_proto_channels_client_proto_rawDesc = "" +
 	"\n" +
-	"\x1bproto/channels_client.proto\x12\x0fchannels_client\"S\n" +
+	"\x1bproto/channels_client.proto\x12\bchannels\"S\n" +
 	"\x19ValidateMembershipRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"9\n" +
 	"\x1aValidateMembershipResponse\x12\x1b\n" +
-	"\tis_member\x18\x01 \x01(\bR\bisMember2\x7f\n" +
-	"\x0eChannelService\x12m\n" +
-	"\x12ValidateMembership\x12*.channels_client.ValidateMembershipRequest\x1a+.channels_client.ValidateMembershipResponseB#Z!messaging/internal/channelsclientb\x06proto3"
+	"\tis_member\x18\x01 \x01(\bR\bisMember2q\n" +
+	"\x0eChannelService\x12_\n" +
+	"\x12ValidateMembership\x12#.channels.ValidateMembershipRequest\x1a$.channels.ValidateMembershipResponseB#Z!messaging/internal/channelsclientb\x06proto3"
 
 var (
 	file_proto_channels_client_proto_rawDescOnce sync.Once
@@ -145,12 +145,12 @@ func file_proto_channels_client_proto_rawDescGZIP() []byte {
 
 var file_proto_channels_client_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_proto_channels_client_proto_goTypes = []any{
-	(*ValidateMembershipRequest)(nil),  // 0: channels_client.ValidateMembershipRequest
-	(*ValidateMembershipResponse)(nil), // 1: channels_client.ValidateMembershipResponse
+	(*ValidateMembershipRequest)(nil),  // 0: channels.ValidateMembershipRequest
+	(*ValidateMembershipResponse)(nil), // 1: channels.ValidateMembershipResponse
 }
 var file_proto_channels_client_proto_depIdxs = []int32{
-	0, // 0: channels_client.ChannelService.ValidateMembership:input_type -> channels_client.ValidateMembershipRequest
-	1, // 1: channels_client.ChannelService.ValidateMembership:output_type -> channels_client.ValidateMembershipResponse
+	0, // 0: channels.ChannelService.ValidateMembership:input_type -> channels.ValidateMembershipRequest
+	1, // 1: channels.ChannelService.ValidateMembership:output_type -> channels.ValidateMembershipResponse
 	1, // [1:2] is the sub-list for method output_type
 	0, // [0:1] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name

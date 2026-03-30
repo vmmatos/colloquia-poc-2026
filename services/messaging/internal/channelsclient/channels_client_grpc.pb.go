@@ -19,7 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ChannelService_ValidateMembership_FullMethodName = "/channels_client.ChannelService/ValidateMembership"
+	ChannelService_ValidateMembership_FullMethodName = "/channels.ChannelService/ValidateMembership"
 )
 
 // ChannelServiceClient is the client API for ChannelService service.
@@ -108,7 +108,7 @@ func _ChannelService_ValidateMembership_Handler(srv interface{}, ctx context.Con
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ChannelService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "channels_client.ChannelService",
+	ServiceName: "channels.ChannelService",
 	HandlerType: (*ChannelServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

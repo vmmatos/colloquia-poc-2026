@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package channels_client;
+package channels;
 
 option go_package = "messaging/internal/channelsclient";
 

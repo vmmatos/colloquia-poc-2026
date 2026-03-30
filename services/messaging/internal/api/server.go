@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,6 +21,12 @@ func NewServer(svc *service.MessagingService, b *broker.Broker, cfg *config.Conf
 
 	router := gin.New()
 	router.Use(gin.Recovery(), gin.Logger())
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost"},
+		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
+		AllowHeaders:     []string{"Authorization", "Content-Type"},
+		AllowCredentials: false,
+	}))
 
 	h := &Handler{svc: svc, broker: b}
 	jwtMw := jwtMiddleware(cfg.JwtPublicKey)

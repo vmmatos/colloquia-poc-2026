@@ -73,6 +73,10 @@ func bearerToken(c *gin.Context) (string, bool) {
 	if len(h) > 7 && h[:7] == "Bearer " {
 		return h[7:], true
 	}
+	// Fallback para SSE via EventSource (não suporta headers customizados)
+	if t := c.Query("token"); t != "" {
+		return t, true
+	}
 	return "", false
 }
 

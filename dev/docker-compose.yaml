@@ -221,6 +221,62 @@ services:
 
   ## ── Messaging Domain --------------------------------------------------------------
 
+  ## ── Assist Domain ----------------------------------------------------------------
+  ## Ollama — local LLM runtime
+  ollama:
+    image: ollama/ollama:latest
+    container_name: colloquia-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  ## Ollama Init — pulls the model once on first run (one-shot)
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: colloquia-ollama-init
+    environment:
+      OLLAMA_HOST: "http://ollama:11434"
+    command: ["pull", "llama3.2:3b"]
+    volumes:
+      - ollama-data:/root/.ollama
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: on-failure
+
+  ## Assist Service
+  assist-service:
+    build:
+      context: ../services/assist
+      dockerfile: Dockerfile
+    container_name: colloquia-assist-service
+    restart: unless-stopped
+    env_file:
+      - .dev.env
+      - .secrets.env
+    environment:
+      MESSAGING_GRPC_ADDRESS: messaging-service:50054
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_TIMEOUT_SECONDS: "120"
+    ports:
+      - "50055:50055"
+      - "8085:8085"
+    depends_on:
+      messaging-service:
+        condition: service_started
+      ollama-init:
+        condition: service_completed_successfully
+
+  ## ── Assist Domain ----------------------------------------------------------------
+
   ## ── Gateway -----------------------------------------------------------------------
   ## KrakenD API Gateway — single entry point for all frontend clients.
   ## In development the config is volume-mounted so changes take effect on restart
@@ -250,6 +306,8 @@ services:
       channels-service:
         condition: service_started
       messaging-service:
+        condition: service_started
+      assist-service:
         condition: service_started
 
   ## ── Gateway -----------------------------------------------------------------------
@@ -293,4 +351,5 @@ volumes:
   users-db-data:
   channels-db-data:
   messaging-db-data:
+  ollama-data:
   web-node-modules:

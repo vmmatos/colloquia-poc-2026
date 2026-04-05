@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package assist;
+
+option go_package = "assist/internal/pb";
+
+service AssistService {
+  rpc GetSuggestions(GetSuggestionsRequest) returns (GetSuggestionsResponse);
+}
+
+message GetSuggestionsRequest {
+  string channel_id    = 1;
+  string current_input = 2;
+  int32  message_limit = 3; // 0 = default (10)
+}
+
+message GetSuggestionsResponse {
+  repeated string suggestions = 1;
+}

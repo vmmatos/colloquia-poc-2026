@@ -2,7 +2,7 @@ package config
 
 import (
 	"encoding/base64"
-	"errors"
+	"fmt"
 	"os"
 	"strings"
 )
@@ -16,29 +16,26 @@ type Config struct {
 }
 
 func LoadConfig() (*Config, error) {
+	var missing []string
+	
+	required := func (key string) string {
+		v, ok := os.LookupEnv(key)
+		if !ok || strings.TrimSpace(v) == "" {
+			missing = append(missing, key)
+		}
+		return v
+	}
+
 	cfg := &Config{
-		DatabaseURL:      os.Getenv("CHANNELS_DATABASE_URL"),
-		JwtPublicKey:     decodeKey(os.Getenv("JWT_PUBLIC_KEY")),
-		GRPCPort:         os.Getenv("CHANNELS_GRPC_PORT"),
-		HTTPPort:         os.Getenv("CHANNELS_HTTP_PORT"),
-		UsersGRPCAddress: os.Getenv("USERS_GRPC_ADDRESS"),
+		DatabaseURL:      required("CHANNELS_DATABASE_URL"),
+		JwtPublicKey:     decodeKey(required("JWT_PUBLIC_KEY")),
+		GRPCPort:         required("CHANNELS_GRPC_PORT"),
+		HTTPPort:         required("CHANNELS_HTTP_PORT"),
+		UsersGRPCAddress: required("USERS_GRPC_ADDRESS"),
 	}
 
-	if cfg.DatabaseURL == "" {
-		return nil, errors.New("CHANNELS_DATABASE_URL is required")
-	}
-	if len(cfg.JwtPublicKey) == 0 {
-		return nil, errors.New("JWT_PUBLIC_KEY is required")
-	}
-
-	if cfg.GRPCPort == "" {
-		cfg.GRPCPort = "50053"
-	}
-	if cfg.HTTPPort == "" {
-		cfg.HTTPPort = "8083"
-	}
-	if cfg.UsersGRPCAddress == "" {
-		cfg.UsersGRPCAddress = "localhost:50052"
+	if len(missing) > 0 {
+		return nil, fmt.Errorf("missing or invalid env vars: %s", strings.Join(missing, ", "))
 	}
 
 	return cfg, nil

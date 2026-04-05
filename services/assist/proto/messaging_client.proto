@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package messaging;
+
+option go_package = "assist/internal/messagingclient";
+
+service MessagingService {
+  rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse);
+}
+
+message Message {
+  string id         = 1;
+  string channel_id = 2;
+  string user_id    = 3;
+  string content    = 4;
+  int64  created_at = 5;
+}
+
+message GetMessagesRequest {
+  string channel_id = 1;
+  string before_id  = 2; // optional cursor; empty = first page
+  int32  limit      = 3; // 0 → default 50, max 100
+}
+
+message GetMessagesResponse {
+  repeated Message messages = 1;
+}

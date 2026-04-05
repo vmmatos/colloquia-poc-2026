@@ -2,7 +2,7 @@ package config
 
 import (
 	"encoding/base64"
-	"errors"
+	"fmt"
 	"os"
 	"strings"
 )
@@ -16,29 +16,26 @@ type Config struct {
 }
 
 func LoadConfig() (*Config, error) {
+	var missing []string
+	
+	required := func (key string) string {
+		v, ok := os.LookupEnv(key)
+		if !ok || strings.TrimSpace(v) == "" {
+			missing = append(missing, key)
+		}
+		return v
+	}
+
 	cfg := &Config{
-		DatabaseURL:         os.Getenv("MESSAGING_DATABASE_URL"),
-		JwtPublicKey:        decodeKey(os.Getenv("JWT_PUBLIC_KEY")),
-		GRPCPort:            os.Getenv("MESSAGING_GRPC_PORT"),
-		HTTPPort:            os.Getenv("MESSAGING_HTTP_PORT"),
-		ChannelsGRPCAddress: os.Getenv("CHANNELS_GRPC_ADDRESS"),
+		DatabaseURL:         required("MESSAGING_DATABASE_URL"),
+		JwtPublicKey:        decodeKey(required("JWT_PUBLIC_KEY")),
+		GRPCPort:            required("MESSAGING_GRPC_PORT"),
+		HTTPPort:            required("MESSAGING_HTTP_PORT"),
+		ChannelsGRPCAddress: required("CHANNELS_GRPC_ADDRESS"),
 	}
 
-	if cfg.DatabaseURL == "" {
-		return nil, errors.New("MESSAGING_DATABASE_URL is required")
-	}
-	if len(cfg.JwtPublicKey) == 0 {
-		return nil, errors.New("JWT_PUBLIC_KEY is required")
-	}
-
-	if cfg.GRPCPort == "" {
-		cfg.GRPCPort = "50054"
-	}
-	if cfg.HTTPPort == "" {
-		cfg.HTTPPort = "8084"
-	}
-	if cfg.ChannelsGRPCAddress == "" {
-		cfg.ChannelsGRPCAddress = "localhost:50053"
+	if len(missing) > 0 {
+		return nil, fmt.Errorf("missing or invalid env vars: %s", strings.Join(missing, ", "))
 	}
 
 	return cfg, nil

@@ -263,9 +263,9 @@ services:
       - .dev.env
       - .secrets.env
     environment:
-      MESSAGING_GRPC_ADDRESS: messaging-service:50054
-      OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_TIMEOUT_SECONDS: "120"
+      ASSIST_MESSAGING_GRPC_ADDRESS: messaging-service:50054
+      ASSIST_OLLAMA_BASE_URL: http://ollama:11434
+      ASSIST_OLLAMA_TIMEOUT_SECONDS: "120"
     ports:
       - "50055:50055"
       - "8085:8085"

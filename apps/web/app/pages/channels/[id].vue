@@ -9,6 +9,7 @@ const { auth } = useAuth()
 const { fetchChannel, fetchMembers } = useChannels()
 const { fetchMessages, sendMessage: apiSendMessage } = useMessaging()
 const { resolveUser, prefetchUsers } = useUsersCache()
+const { suggestions, isLoading: isSuggestionsLoading, debouncedFetch, clearSuggestions } = useAssist()
 const openSidebar = inject<() => void>('openSidebar')
 const registerChannelHandler = inject<(fn: ((e: SseEvent) => void) | null) => void>('registerChannelHandler')
 const route = useRoute()
@@ -34,6 +35,7 @@ const messages = ref<DisplayMessage[]>([])
 const input = ref('')
 const isAgentMode = computed(() => input.value.startsWith('@llm'))
 const messagesEl = ref<HTMLElement | null>(null)
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
 
 function scrollToBottom() {
   nextTick(() => {
@@ -99,6 +101,10 @@ onUnmounted(() => {
 })
 
 watch(channelId, loadChannel)
+watch(input, val => debouncedFetch(channelId.value, val))
+watch(() => suggestions.value.length, (newLen, oldLen) => {
+  if (newLen > 0 && oldLen === 0) scrollToBottom()
+})
 
 async function sendMessage() {
   const text = input.value.trim()
@@ -131,6 +137,7 @@ async function sendMessage() {
   try {
     await apiSendMessage(channelId.value, text)
     input.value = ''
+    clearSuggestions()
   } catch {
     // Falha silenciosa no POC — input não é limpo
   } finally {
@@ -139,10 +146,26 @@ async function sendMessage() {
 }
 
 function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    clearSuggestions()
+    return
+  }
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     sendMessage()
   }
+}
+
+function applySuggestion(suggestion: string) {
+  clearSuggestions()
+  input.value = suggestion
+  nextTick(() => {
+    if (textareaRef.value) {
+      textareaRef.value.focus()
+      textareaRef.value.style.height = 'auto'
+      textareaRef.value.style.height = textareaRef.value.scrollHeight + 'px'
+    }
+  })
 }
 
 const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value === 'admin')
@@ -223,6 +246,30 @@ const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value =
 
       <!-- Message input -->
       <div v-if="!channel?.archived" class="px-4 md:px-6 pb-4 pt-2 flex-shrink-0">
+        <!-- Suggestion pills strip -->
+        <Transition
+          enter-active-class="transition-all duration-200 ease-out"
+          enter-from-class="opacity-0 translate-y-1"
+          leave-active-class="transition-all duration-150 ease-in"
+          leave-to-class="opacity-0 translate-y-1"
+        >
+          <div
+            v-if="suggestions.length > 0"
+            class="flex items-center gap-2 overflow-x-auto pb-2"
+            style="scrollbar-width: none; -ms-overflow-style: none;"
+          >
+            <button
+              v-for="(suggestion, i) in suggestions"
+              :key="i"
+              class="flex-shrink-0 px-3 py-1 rounded-full border border-border bg-surface text-sm font-heading text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5 transition-colors"
+              @mousedown.prevent
+              @click="applySuggestion(suggestion)"
+            >
+              {{ suggestion }}
+            </button>
+          </div>
+        </Transition>
+
         <div
           :class="[
             'flex items-end gap-2 rounded-lg border bg-surface px-4 py-3 transition-all',
@@ -232,6 +279,7 @@ const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value =
           ]"
         >
           <textarea
+            ref="textareaRef"
             v-model="input"
             rows="1"
             :placeholder="isAgentMode ? 'Pergunta ao agente LLM...' : `Mensagem para #${channel?.name ?? ''}`"
@@ -242,8 +290,21 @@ const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value =
               isAgentMode ? 'font-body italic' : 'font-heading',
             ]"
             @keydown="handleKeydown"
+            @blur="clearSuggestions"
             @input="($event.target as HTMLTextAreaElement).style.height = 'auto'; ($event.target as HTMLTextAreaElement).style.height = ($event.target as HTMLTextAreaElement).scrollHeight + 'px'"
           />
+
+          <!-- Loading dots -->
+          <span
+            v-if="isSuggestionsLoading"
+            class="flex items-end gap-0.5 pb-0.5 flex-shrink-0"
+            aria-label="A carregar sugestões"
+          >
+            <span class="w-1 h-1 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.3s]" />
+            <span class="w-1 h-1 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.15s]" />
+            <span class="w-1 h-1 rounded-full bg-muted-foreground animate-bounce" />
+          </span>
+
           <button
             :disabled="!input.trim() || isSending"
             :class="['text-muted-foreground transition-colors flex-shrink-0 pb-0.5', input.trim() && !isSending ? 'hover:text-primary' : 'opacity-30']"

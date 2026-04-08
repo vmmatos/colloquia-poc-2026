@@ -114,6 +114,7 @@ async function loadChannel() {
 
 onMounted(() => {
   loadChannel()
+  window.visualViewport?.addEventListener('resize', scrollToBottom)
   registerChannelHandler?.((event) => {
     if (messages.value.some(m => m.id === event.id)) return // dedup com optimistic
     messages.value.push({
@@ -128,6 +129,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   registerChannelHandler?.(null)
+  window.visualViewport?.removeEventListener('resize', scrollToBottom)
 })
 
 watch(channelId, loadChannel)
@@ -167,9 +169,10 @@ async function sendMessage() {
 
   isSending.value = true
   try {
-    await apiSendMessage(channelId.value, text)
+    const sent = await apiSendMessage(channelId.value, text)
     input.value = ''
     clearSuggestions()
+    messages.value.push(toDisplay(sent))
   } catch {
     // Falha silenciosa no POC — input não é limpo
   } finally {
@@ -354,6 +357,7 @@ const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value =
               isAgentMode ? 'font-body italic' : 'font-heading',
             ]"
             @keydown="handleKeydown"
+            @focus="scrollToBottom"
             @blur="clearSuggestions"
             @input="($event.target as HTMLTextAreaElement).style.height = 'auto'; ($event.target as HTMLTextAreaElement).style.height = ($event.target as HTMLTextAreaElement).scrollHeight + 'px'"
           />

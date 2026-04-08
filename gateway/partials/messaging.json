@@ -67,4 +67,27 @@
       "encoding": "no-op"
     }
   ]
+},
+{
+  "endpoint": "/api/v1/messages/stream",
+  "method": "GET",
+  "output_encoding": "no-op",
+  "input_headers": [],
+  "input_query_strings": ["channel_id", "token"],
+  "timeout": "0s",
+  "extra_config": {
+    "qos/ratelimit/router": {
+      "max_rate": 500,
+      "client_max_rate": 10,
+      "strategy": "ip"
+    }
+  },
+  "backend": [
+    {
+      "url_pattern": "/api/v1/messages/stream",
+      "host": ["http://messaging-service:8084"],
+      "method": "GET",
+      "encoding": "no-op"
+    }
+  ]
 }

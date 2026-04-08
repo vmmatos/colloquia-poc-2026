@@ -37,5 +37,8 @@ export default defineEventHandler(async (event) => {
   console.log(`[AUTH] Token refreshed user_id=${upstream.user_id}`)
 
   const { refresh_token: _rt, ...response } = upstream
-  return response as AuthResponse
+  return {
+    ...response,
+    expires_at: new Date(Number(response.expires_at) * 1000).toISOString(),
+  } as AuthResponse
 })

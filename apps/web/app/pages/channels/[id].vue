@@ -10,6 +10,7 @@ const { fetchChannel, fetchMembers } = useChannels()
 const { fetchMessages, sendMessage: apiSendMessage } = useMessaging()
 const { resolveUser, prefetchUsers } = useUsersCache()
 const { getPeer } = useDMPeers()
+const { isOnline } = usePresence()
 const { suggestions, isLoading: isSuggestionsLoading, debouncedFetch, clearSuggestions } = useAssist()
 const openSidebar = inject<() => void>('openSidebar')
 const registerChannelHandler = inject<(fn: ((e: SseEvent) => void) | null) => void>('registerChannelHandler')
@@ -229,10 +230,23 @@ const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value =
             </svg>
           </button>
 
-          <!-- DM header: avatar + peer name -->
+          <!-- DM header: avatar + peer name + presence -->
           <template v-if="isDM">
-            <UiAvatar :name="peerName" size="sm" />
-            <span class="font-heading font-semibold text-foreground text-sm">{{ peerName }}</span>
+            <UiAvatar
+              :name="peerName"
+              size="sm"
+              :online="peerUserId ? isOnline(peerUserId) : undefined"
+            />
+            <div class="flex flex-col leading-tight">
+              <span class="font-heading font-semibold text-foreground text-sm">{{ peerName }}</span>
+              <span
+                v-if="peerUserId"
+                class="text-xs"
+                :class="isOnline(peerUserId) ? 'text-green-500' : 'text-muted-foreground'"
+              >
+                {{ isOnline(peerUserId) ? 'online' : 'offline' }}
+              </span>
+            </div>
           </template>
 
           <!-- Group header: people icon + name -->

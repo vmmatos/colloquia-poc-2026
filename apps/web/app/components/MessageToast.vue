@@ -1,6 +1,7 @@
 <script setup lang="ts">
 export interface Toast {
   id: number
+  userId: string
   author: string
   preview: string
   channel: string
@@ -8,6 +9,8 @@ export interface Toast {
 
 defineProps<{ toasts: Toast[] }>()
 const emit = defineEmits<{ dismiss: [id: number] }>()
+
+const { isOnline } = usePresence()
 </script>
 
 <template>
@@ -19,7 +22,7 @@ const emit = defineEmits<{ dismiss: [id: number] }>()
         class="bg-card border border-border rounded-lg shadow-xl p-3 w-72 pointer-events-auto animate-fade-in"
       >
         <div class="flex items-start gap-2">
-          <UiAvatar :name="t.author" size="sm" />
+          <UiAvatar :name="t.author" size="sm" :online="isOnline(t.userId)" />
           <div class="flex-1 min-w-0">
             <p class="text-xs font-heading font-semibold text-foreground">{{ t.author }}</p>
             <p class="text-xs font-body text-muted-foreground truncate">{{ t.preview }}</p>

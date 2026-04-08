@@ -237,7 +237,7 @@ function dismissToast(id: number) {
               >
                 <NuxtLink
                   :to="`/channels/${ch.id}`"
-                  class="flex-1 flex items-center gap-2 px-4 py-1.5 text-sm font-heading transition-colors"
+                  class="flex-1 flex items-center gap-2 pl-4 pr-4 py-1.5 text-sm font-heading transition-colors"
                 >
                   <span class="text-muted-foreground">#</span>
                   <span class="flex-1 truncate">{{ ch.name }}</span>
@@ -249,7 +249,7 @@ function dismissToast(id: number) {
                   </span>
                 </NuxtLink>
                 <button
-                  class="opacity-0 group-hover:opacity-100 px-2 text-muted-foreground hover:text-foreground transition-opacity flex-shrink-0"
+                  class="absolute right-0 inset-y-0 flex items-center px-2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
                   title="Gerir canal"
                   @click="managingChannelId = ch.id"
                 >
@@ -309,7 +309,7 @@ function dismissToast(id: number) {
               >
                 <NuxtLink
                   :to="`/channels/${ch.id}`"
-                  class="flex-1 flex items-center gap-2 px-4 py-1.5 text-sm font-heading transition-colors"
+                  class="flex-1 flex items-center gap-2 pl-4 pr-4 py-1.5 text-sm font-heading transition-colors"
                   :class="(unreadCounts[ch.id] ?? 0) > 0 ? 'font-semibold' : ''"
                 >
                   <!-- DM: avatar of the other person -->

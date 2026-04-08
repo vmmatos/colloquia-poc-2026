@@ -12,33 +12,24 @@ export function useSSE(options: {
 }) {
   const { auth } = useAuth()
 
-  // Map simples (não reactivo — gestão interna de conexões)
-  const connections = new Map<
-    string,
-    {
-      source: EventSource
-      retryCount: number
-      retryTimer: ReturnType<typeof setTimeout> | null
-    }
-  >()
+  let source: EventSource | null = null
+  let retryCount = 0
+  let retryTimer: ReturnType<typeof setTimeout> | null = null
+  let subscribedChannels: string[] = []
 
-  function openConnection(channelId: string) {
-    if (connections.has(channelId) || !auth.value.access_token) return
+  function openConnection(channelIds: string[]) {
+    if (source || channelIds.length === 0 || !auth.value.access_token) return
 
-    const token = auth.value.access_token
-    const url = `/api/v1/messages/stream?channel_id=${channelId}&token=${token}`
-    const source = new EventSource(url)
-    const entry = {
-      source,
-      retryCount: 0,
-      retryTimer: null as ReturnType<typeof setTimeout> | null,
-    }
-    connections.set(channelId, entry)
+    const params = new URLSearchParams()
+    channelIds.forEach(id => params.append('channel_id', id))
+    params.set('token', auth.value.access_token)
+
+    source = new EventSource(`/api/v1/messages/stream?${params.toString()}`)
 
     source.addEventListener('message', (e: MessageEvent) => {
       try {
         const payload: SseEvent = JSON.parse(e.data)
-        entry.retryCount = 0
+        retryCount = 0
         options.onMessage(payload)
       } catch {
         // JSON inválido — ignorar
@@ -46,31 +37,38 @@ export function useSSE(options: {
     })
 
     source.addEventListener('error', () => {
-      source.close()
-      connections.delete(channelId)
-      const delay = Math.min(2000 * Math.pow(2, entry.retryCount), 30_000)
-      entry.retryCount++
-      entry.retryTimer = setTimeout(() => openConnection(channelId), delay)
+      source?.close()
+      source = null
+      const delay = Math.min(2000 * Math.pow(2, retryCount), 30_000)
+      retryCount++
+      retryTimer = setTimeout(() => openConnection(subscribedChannels), delay)
     })
   }
 
-  function closeConnection(channelId: string) {
-    const entry = connections.get(channelId)
-    if (!entry) return
-    if (entry.retryTimer) clearTimeout(entry.retryTimer)
-    entry.source.close()
-    connections.delete(channelId)
+  function closeConnection() {
+    if (retryTimer) {
+      clearTimeout(retryTimer)
+      retryTimer = null
+    }
+    source?.close()
+    source = null
   }
 
   function subscribeToChannels(channelIds: string[]) {
-    for (const id of connections.keys()) {
-      if (!channelIds.includes(id)) closeConnection(id)
-    }
-    for (const id of channelIds) openConnection(id)
+    const prev = subscribedChannels.slice().sort().join(',')
+    const next = channelIds.slice().sort().join(',')
+    subscribedChannels = channelIds
+
+    if (prev === next) return // lista não mudou, manter conexão
+
+    closeConnection()
+    retryCount = 0
+    openConnection(channelIds)
   }
 
   function closeAll() {
-    for (const id of [...connections.keys()]) closeConnection(id)
+    subscribedChannels = []
+    closeConnection()
   }
 
   return { subscribeToChannels, closeAll }

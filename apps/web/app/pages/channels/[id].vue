@@ -9,6 +9,7 @@ const { auth } = useAuth()
 const { fetchChannel, fetchMembers } = useChannels()
 const { fetchMessages, sendMessage: apiSendMessage } = useMessaging()
 const { resolveUser, prefetchUsers } = useUsersCache()
+const { getPeer } = useDMPeers()
 const { suggestions, isLoading: isSuggestionsLoading, debouncedFetch, clearSuggestions } = useAssist()
 const openSidebar = inject<() => void>('openSidebar')
 const registerChannelHandler = inject<(fn: ((e: SseEvent) => void) | null) => void>('registerChannelHandler')
@@ -18,7 +19,9 @@ const channelId = computed(() => route.params.id as string)
 
 const channel = ref<Channel | null>(null)
 const myRole = ref<string>('')
+const memberIds = ref<string[]>([])
 const showManage = ref(false)
+const showNewGroup = ref(false)
 const loadError = ref('')
 const isSending = ref(false)
 
@@ -36,6 +39,29 @@ const input = ref('')
 const isAgentMode = computed(() => input.value.startsWith('@llm'))
 const messagesEl = ref<HTMLElement | null>(null)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
+
+// ── Channel type helpers ───────────────────────────────────────────────────────
+
+const isDM = computed(() => channel.value?.type === 'dm')
+const isGroup = computed(() => channel.value?.type === 'group')
+
+const peerUserId = computed(() => isDM.value ? getPeer(channelId.value) : null)
+const peerName = computed(() => peerUserId.value ? resolveUser(peerUserId.value) : '...')
+
+const channelDisplayName = computed(() => {
+  if (isDM.value) return peerName.value
+  if (isGroup.value) return channel.value?.name || 'Grupo'
+  return channel.value?.name ?? '...'
+})
+
+const inputPlaceholder = computed(() => {
+  if (isAgentMode.value) return 'Pergunta ao agente LLM...'
+  if (isDM.value) return `Mensagem para ${peerName.value}`
+  if (isGroup.value) return `Mensagem para ${channel.value?.name || 'o grupo'}`
+  return `Mensagem para #${channel.value?.name ?? ''}`
+})
+
+// ── Scroll ─────────────────────────────────────────────────────────────────────
 
 function scrollToBottom() {
   nextTick(() => {
@@ -59,10 +85,13 @@ function toDisplay(m: Message): DisplayMessage {
   }
 }
 
+// ── Load channel ───────────────────────────────────────────────────────────────
+
 async function loadChannel() {
   loadError.value = ''
   channel.value = null
   myRole.value = ''
+  memberIds.value = []
   messages.value = []
 
   try {
@@ -75,7 +104,8 @@ async function loadChannel() {
     const members = memberList as ChannelMember[]
     const me = members.find(m => m.user_id === auth.value.user_id)
     myRole.value = me?.role ?? ''
-    await prefetchUsers(members.map(m => m.user_id))
+    memberIds.value = members.map(m => m.user_id)
+    await prefetchUsers(memberIds.value)
     messages.value = history.map(toDisplay)
   } catch {
     loadError.value = 'Canal não encontrado ou sem acesso.'
@@ -105,6 +135,8 @@ watch(input, val => debouncedFetch(channelId.value, val))
 watch(() => suggestions.value.length, (newLen, oldLen) => {
   if (newLen > 0 && oldLen === 0) scrollToBottom()
 })
+
+// ── Send message ───────────────────────────────────────────────────────────────
 
 async function sendMessage() {
   const text = input.value.trim()
@@ -193,12 +225,44 @@ const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value =
               <line x1="4" x2="20" y1="18" y2="18" />
             </svg>
           </button>
-          <span class="text-muted-foreground">#</span>
-          <span class="font-heading font-semibold text-foreground text-sm">{{ channel?.name ?? '...' }}</span>
+
+          <!-- DM header: avatar + peer name -->
+          <template v-if="isDM">
+            <UiAvatar :name="peerName" size="sm" />
+            <span class="font-heading font-semibold text-foreground text-sm">{{ peerName }}</span>
+          </template>
+
+          <!-- Group header: people icon + name -->
+          <template v-else-if="isGroup">
+            <svg class="h-4 w-4 text-muted-foreground flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span class="font-heading font-semibold text-foreground text-sm">{{ channelDisplayName }}</span>
+          </template>
+
+          <!-- Regular channel header: # + name -->
+          <template v-else>
+            <span class="text-muted-foreground">#</span>
+            <span class="font-heading font-semibold text-foreground text-sm">{{ channel?.name ?? '...' }}</span>
+          </template>
         </div>
+
         <div class="flex items-center gap-2">
+          <!-- Add people button (DM only) -->
           <button
-            v-if="isAdminOrOwner && channel"
+            v-if="isDM && channel"
+            class="text-muted-foreground hover:text-foreground transition-colors"
+            title="Adicionar pessoas à conversa"
+            @click="showNewGroup = true"
+          >
+            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
+          </button>
+
+          <!-- Manage channel button (admin/owner, non-DM) -->
+          <button
+            v-if="isAdminOrOwner && channel && !isDM"
             class="text-muted-foreground hover:text-foreground transition-colors"
             title="Gerir canal"
             @click="showManage = true"
@@ -282,7 +346,7 @@ const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value =
             ref="textareaRef"
             v-model="input"
             rows="1"
-            :placeholder="isAgentMode ? 'Pergunta ao agente LLM...' : `Mensagem para #${channel?.name ?? ''}`"
+            :placeholder="inputPlaceholder"
             :class="[
               'flex-1 bg-transparent resize-none outline-none text-sm text-foreground',
               'placeholder:text-muted-foreground leading-relaxed',
@@ -322,13 +386,21 @@ const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value =
       </div>
     </div>
 
-    <!-- Manage Channel Modal -->
+    <!-- Manage Channel Modal (non-DM channels) -->
     <ManageChannelModal
-      v-if="channel"
+      v-if="channel && !isDM"
       :open="showManage"
       :channel-id="channelId"
       @close="showManage = false"
       @deleted="navigateTo('/')"
+    />
+
+    <!-- New Group Modal (from DM) -->
+    <NewGroupModal
+      v-if="isDM"
+      :open="showNewGroup"
+      :existing-member-ids="memberIds"
+      @close="showNewGroup = false"
     />
   </div>
 </template>

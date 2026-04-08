@@ -6,6 +6,7 @@ export interface Channel {
   created_by: string
   archived: boolean
   type: 'dm' | 'group' | 'channel'
+  dm_key?: string
   member_count: number
   created_at: number
   updated_at: number

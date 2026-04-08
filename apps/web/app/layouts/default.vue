@@ -6,25 +6,26 @@ const { auth, logout, getProfile } = useAuth()
 useTokenRefresh()
 const isMobile = useIsMobile()
 const { addNotification } = useNotifications()
-const { channels, fetchMyChannels } = useChannels()
-const { resolveUser } = useUsersCache()
+const { channels, fetchMyChannels, fetchMembers } = useChannels()
+const { resolveUser, prefetchUsers } = useUsersCache()
+const { getPeer, setPeer } = useDMPeers()
 
 const displayName = ref('')
 const showProfile = ref(false)
 const sidebarOpen = ref(false)
 const showCreateChannel = ref(false)
+const showNewDM = ref(false)
 const managingChannelId = ref<string | null>(null)
-
-const dms = reactive([
-  { id: 'alice', label: 'Alice', online: true, unread: 0 },
-  { id: 'bob', label: 'Bob', online: true, unread: 0 },
-  { id: 'charlie', label: 'Charlie', online: false, unread: 0 },
-])
 
 const channelsOpen = ref(true)
 const dmsOpen = ref(true)
 const toasts = ref<Toast[]>([])
 const unreadCounts = reactive<Record<string, number>>({})
+
+// ── Channel splits ─────────────────────────────────────────────────────────────
+
+const regularChannels = computed(() => channels.value.filter(c => c.type === 'channel'))
+const dmAndGroupChannels = computed(() => channels.value.filter(c => c.type === 'dm' || c.type === 'group'))
 
 // ── SSE ────────────────────────────────────────────────────────────────────────
 
@@ -49,10 +50,11 @@ function onSseMessage(event: SseEvent) {
 
   // Canal em background → contagem de não lidos + notificação + toast
   unreadCounts[event.channel_id] = (unreadCounts[event.channel_id] ?? 0) + 1
-  const channelName = channels.value.find(c => c.id === event.channel_id)?.name ?? event.channel_id
+  const ch = channels.value.find(c => c.id === event.channel_id)
+  const channelLabel = dmChannelLabel(ch?.id ?? '', ch?.type ?? 'channel', ch?.name ?? event.channel_id)
   addNotification({
     type: 'message',
-    title: `Nova mensagem em #${channelName}`,
+    title: `Nova mensagem em ${channelLabel}`,
     body: event.content.slice(0, 80),
     time: 'agora',
     channelId: event.channel_id,
@@ -63,7 +65,7 @@ function onSseMessage(event: SseEvent) {
     id: toastId,
     author: resolveUser(event.user_id),
     preview: event.content.slice(0, 60),
-    channel: `#${channelName}`,
+    channel: channelLabel,
   })
   setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== toastId) }, 3500)
 }
@@ -73,6 +75,30 @@ const sse = useSSE({ activeChannelId, onMessage: onSseMessage })
 watch(activeChannelId, (id) => {
   if (id) unreadCounts[id] = 0
 }, { immediate: true })
+
+// ── DM peer resolution ─────────────────────────────────────────────────────────
+
+async function loadDMPeers(chList = channels.value) {
+  const dmChannels = chList.filter(c => c.type === 'dm')
+  await Promise.all(dmChannels.map(async (ch) => {
+    if (getPeer(ch.id)) return
+    try {
+      const members = await fetchMembers(ch.id)
+      const ids = members.map(m => m.user_id)
+      setPeer(ch.id, ids)
+      await prefetchUsers(ids)
+    } catch { /* best-effort */ }
+  }))
+}
+
+function dmChannelLabel(channelId: string, type: string, name: string): string {
+  if (type === 'dm') {
+    const peerId = getPeer(channelId)
+    return peerId ? resolveUser(peerId) : '...'
+  }
+  if (type === 'group') return name || 'Grupo'
+  return `#${name}`
+}
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────────
 
@@ -89,11 +115,17 @@ onMounted(async () => {
   try {
     await fetchMyChannels()
     sse.subscribeToChannels(channels.value.map(c => c.id))
+    loadDMPeers()
   } catch {
     // channels might not be available
   }
 
-  channelPollTimer = setInterval(() => fetchMyChannels().catch(() => {}), 30_000)
+  channelPollTimer = setInterval(async () => {
+    try {
+      await fetchMyChannels()
+      loadDMPeers()
+    } catch { /* ignore */ }
+  }, 30_000)
 })
 
 onUnmounted(() => {
@@ -103,6 +135,7 @@ onUnmounted(() => {
 
 watch(channels, (newChannels) => {
   sse.subscribeToChannels(newChannels.map(c => c.id))
+  loadDMPeers(newChannels)
 }, { deep: false })
 
 watch(() => auth.value.access_token, (token) => {
@@ -193,7 +226,7 @@ function dismissToast(id: number) {
 
             <ul v-if="channelsOpen" class="mt-1">
               <li
-                v-for="ch in channels"
+                v-for="ch in regularChannels"
                 :key="ch.id"
                 class="group relative flex items-stretch"
                 :class="[
@@ -225,7 +258,7 @@ function dismissToast(id: number) {
                 </button>
               </li>
 
-              <li v-if="channels.length === 0">
+              <li v-if="regularChannels.length === 0">
                 <button
                   class="flex items-center gap-2 w-full px-4 py-1.5 text-sm font-heading text-muted-foreground/60 hover:text-muted-foreground transition-colors"
                   @click="showCreateChannel = true"
@@ -237,41 +270,79 @@ function dismissToast(id: number) {
             </ul>
           </div>
 
-          <!-- DMs section -->
+          <!-- DMs & Groups section -->
           <div>
-            <button
-              class="flex items-center gap-1 w-full px-4 py-1 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors font-heading"
-              @click="dmsOpen = !dmsOpen"
-            >
-              <svg
-                :class="['h-3 w-3 transition-transform flex-shrink-0', dmsOpen ? 'rotate-90' : '']"
-                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            <div class="flex items-center w-full px-4 py-1">
+              <button
+                class="flex items-center gap-1 flex-1 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors font-heading"
+                @click="dmsOpen = !dmsOpen"
               >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-              <span>Mensagens directas</span>
-            </button>
+                <svg
+                  :class="['h-3 w-3 transition-transform flex-shrink-0', dmsOpen ? 'rotate-90' : '']"
+                  xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+                <span>Mensagens directas</span>
+              </button>
+              <button
+                class="text-muted-foreground hover:text-foreground transition-colors ml-1 flex-shrink-0"
+                title="Nova mensagem directa"
+                @click.stop="showNewDM = true"
+              >
+                <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
 
             <ul v-if="dmsOpen" class="mt-1">
-              <li v-for="dm in dms" :key="dm.id">
-                <button
-                  class="flex items-center gap-2 w-full px-4 py-1.5 text-sm font-heading transition-colors hover:bg-secondary/50 hover:text-foreground"
-                  :class="dm.unread > 0 ? 'text-foreground font-semibold' : 'text-muted-foreground'"
+              <li
+                v-for="ch in dmAndGroupChannels"
+                :key="ch.id"
+                class="group relative flex items-stretch"
+                :class="[
+                  $route.params.id === ch.id ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
+                ]"
+              >
+                <NuxtLink
+                  :to="`/channels/${ch.id}`"
+                  class="flex-1 flex items-center gap-2 px-4 py-1.5 text-sm font-heading transition-colors"
+                  :class="(unreadCounts[ch.id] ?? 0) > 0 ? 'font-semibold' : ''"
                 >
-                  <div class="relative flex-shrink-0">
-                    <UiAvatar :name="dm.label" size="sm" />
-                    <span
-                      :class="['absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-sidebar',
-                        dm.online ? 'bg-emerald-500' : 'bg-muted-foreground/40']"
-                    />
-                  </div>
-                  <span class="flex-1 truncate text-left">{{ dm.label }}</span>
+                  <!-- DM: avatar of the other person -->
+                  <template v-if="ch.type === 'dm'">
+                    <div class="flex-shrink-0">
+                      <UiAvatar :name="getPeer(ch.id) ? resolveUser(getPeer(ch.id)!) : '?'" size="sm" />
+                    </div>
+                    <span class="flex-1 truncate">
+                      {{ getPeer(ch.id) ? resolveUser(getPeer(ch.id)!) : '...' }}
+                    </span>
+                  </template>
+
+                  <!-- Group: people icon + name -->
+                  <template v-else>
+                    <svg class="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span class="flex-1 truncate">{{ ch.name || 'Grupo' }}</span>
+                  </template>
+
                   <span
-                    v-if="dm.unread > 0"
+                    v-if="(unreadCounts[ch.id] ?? 0) > 0"
                     class="ml-auto w-4 h-4 rounded-full bg-primary text-primary-foreground text-xs font-heading font-semibold flex items-center justify-center flex-shrink-0"
                   >
-                    {{ dm.unread > 9 ? '9+' : dm.unread }}
+                    {{ (unreadCounts[ch.id] ?? 0) > 9 ? '9+' : unreadCounts[ch.id] }}
                   </span>
+                </NuxtLink>
+              </li>
+
+              <li v-if="dmAndGroupChannels.length === 0">
+                <button
+                  class="flex items-center gap-2 w-full px-4 py-1.5 text-sm font-heading text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                  @click="showNewDM = true"
+                >
+                  <span class="italic">Nova mensagem directa...</span>
                 </button>
               </li>
             </ul>
@@ -288,7 +359,6 @@ function dismissToast(id: number) {
             <span class="flex-1 text-sm font-heading text-muted-foreground group-hover:text-foreground truncate text-left">
               {{ displayName || 'Perfil' }}
             </span>
-            <!-- Settings icon -->
             <svg class="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -299,7 +369,6 @@ function dismissToast(id: number) {
             class="mt-1 flex items-center gap-1.5 w-full px-1.5 py-1 text-xs font-heading text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-secondary/50"
             @click="handleLogout"
           >
-            <!-- Logout icon -->
             <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
@@ -324,6 +393,12 @@ function dismissToast(id: number) {
     <CreateChannelModal
       :open="showCreateChannel"
       @close="showCreateChannel = false"
+    />
+
+    <!-- New DM Modal -->
+    <NewDMModal
+      :open="showNewDM"
+      @close="showNewDM = false"
     />
 
     <!-- Manage Channel Modal -->

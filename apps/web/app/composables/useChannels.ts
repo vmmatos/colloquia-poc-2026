@@ -24,6 +24,18 @@ export function useChannels() {
     return ch
   }
 
+  async function createDM(otherUserId: string): Promise<Channel> {
+    const ch = await $fetch<Channel>('/api/channels/dm', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { other_user_id: otherUserId },
+    })
+    if (!channels.value.find(c => c.id === ch.id)) {
+      channels.value = [...channels.value, ch]
+    }
+    return ch
+  }
+
   async function deleteChannel(id: string): Promise<void> {
     await $fetch(`/api/channels/${id}`, {
       method: 'DELETE',
@@ -63,6 +75,7 @@ export function useChannels() {
     channels,
     fetchMyChannels,
     createChannel,
+    createDM,
     deleteChannel,
     fetchChannel,
     fetchMembers,

@@ -24,3 +24,9 @@ export interface ValidateTokenResponse {
   user_id: string
   email: string
 }
+
+export interface PresenceEvent {
+  user_id: string
+  online: boolean
+  last_seen: number // Unix seconds
+}

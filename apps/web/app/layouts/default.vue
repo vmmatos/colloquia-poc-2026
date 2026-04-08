@@ -9,6 +9,7 @@ const { addNotification } = useNotifications()
 const { channels, fetchMyChannels, fetchMembers } = useChannels()
 const { resolveUser, prefetchUsers } = useUsersCache()
 const { getPeer, setPeer } = useDMPeers()
+const { isOnline, init: initPresence, destroy: destroyPresence } = usePresence()
 
 const displayName = ref('')
 const showProfile = ref(false)
@@ -65,6 +66,7 @@ function onSseMessage(event: SseEvent) {
   const toastId = Date.now()
   toasts.value.push({
     id: toastId,
+    userId: event.user_id,
     author: resolveUser(event.user_id),
     preview: event.content.slice(0, 60),
     channel: channelLabel,
@@ -122,6 +124,8 @@ onMounted(async () => {
     // channels might not be available
   }
 
+  initPresence()
+
   channelPollTimer = setInterval(async () => {
     try {
       await fetchMyChannels()
@@ -132,6 +136,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   sse.closeAll()
+  destroyPresence()
   if (channelPollTimer) clearInterval(channelPollTimer)
 })
 
@@ -143,7 +148,11 @@ watch(channels, (newChannels) => {
 watch(() => auth.value.access_token, (token) => {
   if (token && channels.value.length > 0) {
     sse.closeAll()
-    nextTick(() => sse.subscribeToChannels(channels.value.map(c => c.id)))
+    destroyPresence()
+    nextTick(() => {
+      sse.subscribeToChannels(channels.value.map(c => c.id))
+      initPresence()
+    })
   }
 })
 
@@ -315,7 +324,11 @@ function dismissToast(id: number) {
                   <!-- DM: avatar of the other person -->
                   <template v-if="ch.type === 'dm'">
                     <div class="flex-shrink-0">
-                      <UiAvatar :name="getPeer(ch.id) ? resolveUser(getPeer(ch.id)!) : '?'" size="sm" />
+                      <UiAvatar
+                        :name="getPeer(ch.id) ? resolveUser(getPeer(ch.id)!) : '?'"
+                        size="sm"
+                        :online="getPeer(ch.id) ? isOnline(getPeer(ch.id)!) : undefined"
+                      />
                     </div>
                     <span class="flex-1 truncate">
                       {{ getPeer(ch.id) ? resolveUser(getPeer(ch.id)!) : '...' }}

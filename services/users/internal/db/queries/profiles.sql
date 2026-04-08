@@ -25,3 +25,6 @@ SELECT * FROM user_profiles ORDER BY created_at DESC LIMIT $1 OFFSET $2;
 SELECT * FROM user_profiles
 WHERE name ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%'
 ORDER BY created_at DESC LIMIT $2 OFFSET $3;
+
+-- name: TouchLastSeen :exec
+UPDATE user_profiles SET last_seen_at = NOW() WHERE id = $1;

@@ -4,7 +4,9 @@ import (
 	"context"
 	"net/http"
 	"time"
+	"users/internal/broker"
 	"users/internal/config"
+	"users/internal/presence"
 	"users/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -14,13 +16,13 @@ type Server struct {
 	httpServer *http.Server
 }
 
-func NewServer(svc *service.UsersService, cfg *config.Config) *Server {
+func NewServer(svc *service.UsersService, b *broker.Broker, tracker *presence.Tracker, cfg *config.Config) *Server {
 	gin.SetMode(gin.ReleaseMode)
 
 	router := gin.New()
 	router.Use(gin.Recovery(), gin.Logger())
 
-	h := &Handler{svc: svc}
+	h := &Handler{svc: svc, broker: b, tracker: tracker}
 	jwtMw := jwtMiddleware(cfg.JwtPublicKey)
 
 	router.GET("/__health", func(c *gin.Context) {
@@ -35,15 +37,18 @@ func NewServer(svc *service.UsersService, cfg *config.Config) *Server {
 		v1.GET("/search", jwtMw, h.SearchUsers)
 		v1.GET("/:id", h.GetUser)
 		v1.PATCH("/me", jwtMw, h.UpdateProfile)
+		v1.POST("/heartbeat", jwtMw, h.Heartbeat)
+		v1.GET("/presence/stream", jwtMw, h.StreamPresence)
 	}
 
 	return &Server{
 		httpServer: &http.Server{
-			Addr:         ":" + cfg.HTTPPort,
-			Handler:      router,
-			ReadTimeout:  10 * time.Second,
-			WriteTimeout: 10 * time.Second,
-			IdleTimeout:  120 * time.Second,
+			Addr:    ":" + cfg.HTTPPort,
+			Handler: router,
+			// WriteTimeout must be 0 to support long-lived SSE connections.
+			ReadTimeout: 10 * time.Second,
+			WriteTimeout: 0,
+			IdleTimeout: 120 * time.Second,
 		},
 	}
 }

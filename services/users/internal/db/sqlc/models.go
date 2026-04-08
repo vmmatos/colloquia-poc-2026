@@ -10,13 +10,14 @@ import (
 )
 
 type UserProfile struct {
-	ID        uuid.UUID
-	Email     string
-	Name      string
-	Avatar    string
-	Bio       string
-	Timezone  string
-	Status    string
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+	ID         uuid.UUID
+	Email      string
+	Name       string
+	Avatar     string
+	Bio        string
+	Timezone   string
+	Status     string
+	CreatedAt  pgtype.Timestamp
+	UpdatedAt  pgtype.Timestamp
+	LastSeenAt pgtype.Timestamp
 }

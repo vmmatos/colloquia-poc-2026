@@ -23,4 +23,5 @@ type IUsersRepository interface {
 	UpdateUserProfile(ctx context.Context, id uuid.UUID, params UpdateParams) (sqlc.UserProfile, error)
 	ListUsers(ctx context.Context, limit, offset int32) ([]sqlc.UserProfile, error)
 	SearchUsers(ctx context.Context, query string, limit, offset int32) ([]sqlc.UserProfile, error)
+	TouchLastSeen(ctx context.Context, id uuid.UUID) error
 }

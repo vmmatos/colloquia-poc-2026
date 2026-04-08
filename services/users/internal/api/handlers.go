@@ -1,9 +1,14 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
+	"users/internal/broker"
+	"users/internal/presence"
 	"users/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -14,7 +19,9 @@ import (
 const userIDKey = "userID"
 
 type Handler struct {
-	svc *service.UsersService
+	svc     *service.UsersService
+	broker  *broker.Broker
+	tracker *presence.Tracker
 }
 
 // ── JWT middleware ─────────────────────────────────────────────────────────────
@@ -68,6 +75,10 @@ func bearerToken(c *gin.Context) (string, bool) {
 	h := c.GetHeader("Authorization")
 	if len(h) > 7 && h[:7] == "Bearer " {
 		return h[7:], true
+	}
+	// Fallback for SSE via EventSource (browser cannot set custom headers)
+	if t := c.Query("token"); t != "" {
+		return t, true
 	}
 	return "", false
 }
@@ -248,4 +259,57 @@ func parsePagination(c *gin.Context) (limit, offset int32) {
 		offset = int32(v)
 	}
 	return
+}
+
+// POST /api/v1/users/heartbeat  (requires JWT)
+func (h *Handler) Heartbeat(c *gin.Context) {
+	userID := c.MustGet(userIDKey).(uuid.UUID)
+	h.tracker.Heartbeat(c.Request.Context(), userID)
+	c.Status(http.StatusNoContent)
+}
+
+// GET /api/v1/users/presence/stream  (requires JWT)
+// Sends an initial snapshot of all currently-online users, then real-time presence changes.
+func (h *Handler) StreamPresence(c *gin.Context) {
+	flusher, ok := c.Writer.(http.Flusher)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "streaming not supported"})
+		return
+	}
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
+
+	sub := h.broker.Subscribe("global")
+	defer h.broker.Unsubscribe("global", sub)
+
+	// Seed the client with the current snapshot so it doesn't wait for the next state change.
+	now := time.Now().Unix()
+	for uid, online := range h.tracker.OnlineUsers() {
+		data, _ := json.Marshal(broker.PresenceEvent{UserID: uid, Online: online, LastSeen: now})
+		fmt.Fprintf(c.Writer, "data: %s\n\n", data)
+	}
+	flusher.Flush()
+
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case event, ok := <-sub:
+			if !ok {
+				return
+			}
+			data, _ := json.Marshal(event)
+			fmt.Fprintf(c.Writer, "data: %s\n\n", data)
+			flusher.Flush()
+		case <-ticker.C:
+			fmt.Fprintf(c.Writer, ": heartbeat\n\n")
+			flusher.Flush()
+		case <-c.Request.Context().Done():
+			return
+		}
+	}
 }

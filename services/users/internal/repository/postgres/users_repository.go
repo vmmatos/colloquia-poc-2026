@@ -52,3 +52,7 @@ func (r *UsersRepository) SearchUsers(ctx context.Context, query string, limit, 
 		Offset:  offset,
 	})
 }
+
+func (r *UsersRepository) TouchLastSeen(ctx context.Context, id uuid.UUID) error {
+	return r.queries.TouchLastSeen(ctx, id)
+}

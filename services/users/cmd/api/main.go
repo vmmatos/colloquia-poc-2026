@@ -10,8 +10,10 @@ import (
 	"syscall"
 	"time"
 	"users/internal/api"
+	"users/internal/broker"
 	"users/internal/config"
 	grpcserver "users/internal/grpc"
+	"users/internal/presence"
 	"users/internal/repository/postgres"
 	"users/internal/service"
 
@@ -43,8 +45,12 @@ func main() {
 	usersRepo := postgres.NewUsersRepository(pool)
 	usersSvc := service.NewUsersService(usersRepo)
 
+	presenceBroker := broker.NewBroker()
+	presenceTracker := presence.NewTracker(presenceBroker, usersRepo)
+	presenceTracker.StartReaper(ctx)
+
 	grpcSrv := grpcserver.NewServer(grpcserver.NewUsersHandler(usersSvc))
-	httpSrv := api.NewServer(usersSvc, cfg)
+	httpSrv := api.NewServer(usersSvc, presenceBroker, presenceTracker, cfg)
 
 	// Run both servers concurrently; cancel context if either fails.
 	g, gCtx := errgroup.WithContext(ctx)

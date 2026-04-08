@@ -11,7 +11,9 @@ export interface AppNotification {
 const notifications = ref<AppNotification[]>([])
 
 export function useNotifications() {
-  const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
+  const unreadCount = computed(() =>
+    new Set(notifications.value.filter(n => !n.read && n.channelId).map(n => n.channelId)).size
+  )
 
   function addNotification(n: Omit<AppNotification, 'id' | 'read'>) {
     notifications.value.unshift({ ...n, id: Date.now(), read: false })

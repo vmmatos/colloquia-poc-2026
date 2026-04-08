@@ -48,6 +48,8 @@ function onSseMessage(event: SseEvent) {
     return
   }
 
+  if (event.user_id === auth.value?.user_id) return
+
   // Canal em background → contagem de não lidos + notificação + toast
   unreadCounts[event.channel_id] = (unreadCounts[event.channel_id] ?? 0) + 1
   const ch = channels.value.find(c => c.id === event.channel_id)

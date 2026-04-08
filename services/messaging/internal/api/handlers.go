@@ -171,10 +171,11 @@ func (h *Handler) GetMessages(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// GET /api/v1/messages/stream?channel_id=
+// GET /api/v1/messages/stream?channel_id=id1&channel_id=id2...
+// Accepts one or more channel_id query parameters in a single SSE connection.
 func (h *Handler) StreamMessages(c *gin.Context) {
-	channelID := c.Query("channel_id")
-	if channelID == "" {
+	channelIDs := c.QueryArray("channel_id")
+	if len(channelIDs) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "channel_id is required"})
 		return
 	}
@@ -190,8 +191,26 @@ func (h *Handler) StreamMessages(c *gin.Context) {
 	c.Header("Connection", "keep-alive")
 	c.Header("X-Accel-Buffering", "no")
 
-	sub := h.broker.Subscribe(channelID)
-	defer h.broker.Unsubscribe(channelID, sub)
+	// Subscribe to all channels and fan-in events into a single merged channel.
+	merged := make(chan broker.SSEEvent, 32)
+	subs := make([]chan broker.SSEEvent, len(channelIDs))
+	for i, id := range channelIDs {
+		sub := h.broker.Subscribe(id)
+		subs[i] = sub
+		go func(s chan broker.SSEEvent) {
+			for evt := range s {
+				select {
+				case merged <- evt:
+				default:
+				}
+			}
+		}(sub)
+	}
+	defer func() {
+		for i, id := range channelIDs {
+			h.broker.Unsubscribe(id, subs[i])
+		}
+	}()
 
 	// Initial flush to establish the connection.
 	fmt.Fprintf(c.Writer, ": connected\n\n")
@@ -202,10 +221,7 @@ func (h *Handler) StreamMessages(c *gin.Context) {
 
 	for {
 		select {
-		case event, open := <-sub:
-			if !open {
-				return
-			}
+		case event := <-merged:
 			data, _ := json.Marshal(event)
 			fmt.Fprintf(c.Writer, "data: %s\n\n", data)
 			flusher.Flush()

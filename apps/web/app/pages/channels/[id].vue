@@ -40,6 +40,9 @@ const input = ref('')
 const isAgentMode = computed(() => input.value.startsWith('@llm'))
 const messagesEl = ref<HTMLElement | null>(null)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const emojiBtnRef = ref<HTMLButtonElement | null>(null)
+const isMobile = useIsMobile()
+const showEmojiPicker = ref(false)
 
 // ── Channel type helpers ───────────────────────────────────────────────────────
 
@@ -114,6 +117,7 @@ async function loadChannel() {
 }
 
 onMounted(() => {
+  import('emoji-picker-element')
   loadChannel()
   window.visualViewport?.addEventListener('resize', scrollToBottom)
   registerChannelHandler?.((event) => {
@@ -173,7 +177,9 @@ async function sendMessage() {
     const sent = await apiSendMessage(channelId.value, text)
     input.value = ''
     clearSuggestions()
-    messages.value.push(toDisplay(sent))
+    if (!messages.value.some(m => m.id === sent.id)) {
+      messages.value.push(toDisplay(sent))
+    }
   } catch {
     // Falha silenciosa no POC — input não é limpo
   } finally {
@@ -205,6 +211,48 @@ function applySuggestion(suggestion: string) {
 }
 
 const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value === 'admin')
+
+// ── Emoji picker ───────────────────────────────────────────────────────────────
+
+const pickerStyle = computed(() => {
+  if (isMobile.value || !emojiBtnRef.value) return {}
+  const rect = emojiBtnRef.value.getBoundingClientRect()
+  return {
+    position: 'fixed' as const,
+    bottom: `${window.innerHeight - rect.top + 8}px`,
+    right: `${window.innerWidth - rect.right}px`,
+  }
+})
+
+function insertEmoji(event: CustomEvent) {
+  const emoji = (event.detail as { unicode: string }).unicode
+  const el = textareaRef.value
+  if (!el) return
+  const start = el.selectionStart ?? input.value.length
+  const end = el.selectionEnd ?? start
+  input.value = input.value.slice(0, start) + emoji + input.value.slice(end)
+  showEmojiPicker.value = false
+  nextTick(() => {
+    el.focus()
+    el.setSelectionRange(start + emoji.length, start + emoji.length)
+  })
+}
+
+function onClickOutsidePicker(e: MouseEvent) {
+  const picker = document.querySelector('emoji-picker')
+  if (picker && !picker.contains(e.target as Node) && !emojiBtnRef.value?.contains(e.target as Node)) {
+    showEmojiPicker.value = false
+  }
+}
+
+watch(showEmojiPicker, (v) => {
+  if (v) document.addEventListener('click', onClickOutsidePicker)
+  else document.removeEventListener('click', onClickOutsidePicker)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', onClickOutsidePicker)
+})
 </script>
 
 <template>
@@ -387,6 +435,22 @@ const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value =
             <span class="w-1 h-1 rounded-full bg-muted-foreground animate-bounce" />
           </span>
 
+          <!-- Emoji picker button -->
+          <button
+            ref="emojiBtnRef"
+            type="button"
+            class="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0 pb-0.5"
+            title="Emojis"
+            @click.stop="showEmojiPicker = !showEmojiPicker"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <path stroke-linecap="round" d="M8 13s1.5 2 4 2 4-2 4-2" />
+              <line x1="9" y1="9" x2="9.01" y2="9" stroke-linecap="round" stroke-width="3" />
+              <line x1="15" y1="9" x2="15.01" y2="9" stroke-linecap="round" stroke-width="3" />
+            </svg>
+          </button>
+
           <button
             :disabled="!input.trim() || isSending"
             :class="['text-muted-foreground transition-colors flex-shrink-0 pb-0.5', input.trim() && !isSending ? 'hover:text-primary' : 'opacity-30']"
@@ -420,5 +484,46 @@ const isAdminOrOwner = computed(() => myRole.value === 'owner' || myRole.value =
       :existing-member-ids="memberIds"
       @close="showNewGroup = false"
     />
+
+    <!-- Emoji Picker — Desktop (floating above button) -->
+    <Teleport to="body">
+      <div
+        v-if="showEmojiPicker && !isMobile"
+        :style="pickerStyle"
+        class="fixed z-50"
+        @click.stop
+      >
+        <emoji-picker @emoji-click="insertEmoji" />
+      </div>
+    </Teleport>
+
+    <!-- Emoji Picker — Mobile (bottom sheet) -->
+    <Teleport to="body">
+      <Transition name="slide-up">
+        <div v-if="showEmojiPicker && isMobile" class="fixed inset-0 z-50 flex flex-col justify-end">
+          <div class="absolute inset-0 bg-background/60 backdrop-blur-sm" @click="showEmojiPicker = false" />
+          <div class="relative bg-card rounded-t-2xl overflow-hidden" style="max-height: 50vh">
+            <div class="flex justify-center pt-3 pb-1">
+              <div class="w-10 h-1 rounded-full bg-muted-foreground/30" />
+            </div>
+            <emoji-picker
+              style="width: 100%; border: none; border-radius: 0; --num-columns: 8;"
+              @emoji-click="insertEmoji"
+            />
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
+
+<style>
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: transform 0.25s ease;
+}
+.slide-up-enter-from,
+.slide-up-leave-to {
+  transform: translateY(100%);
+}
+</style>

@@ -28,5 +28,11 @@ export function useNotifications() {
     if (n) n.read = true
   }
 
-  return { notifications, unreadCount, addNotification, markAllRead, markRead }
+  function markChannelRead(channelId: string) {
+    notifications.value = notifications.value.map(n =>
+      n.channelId === channelId ? { ...n, read: true } : n
+    )
+  }
+
+  return { notifications, unreadCount, addNotification, markAllRead, markRead, markChannelRead }
 }

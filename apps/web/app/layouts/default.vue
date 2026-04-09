@@ -5,7 +5,7 @@ import type { SseEvent } from '~/composables/useSSE'
 const { auth, logout, getProfile } = useAuth()
 useTokenRefresh()
 const isMobile = useIsMobile()
-const { addNotification } = useNotifications()
+const { addNotification, markChannelRead } = useNotifications()
 const { channels, fetchMyChannels, fetchMembers } = useChannels()
 const { resolveUser, prefetchUsers } = useUsersCache()
 const { getPeer, setPeer } = useDMPeers()
@@ -77,7 +77,10 @@ function onSseMessage(event: SseEvent) {
 const sse = useSSE({ activeChannelId, onMessage: onSseMessage })
 
 watch(activeChannelId, (id) => {
-  if (id) unreadCounts[id] = 0
+  if (id) {
+    unreadCounts[id] = 0
+    markChannelRead(id)
+  }
 }, { immediate: true })
 
 // ── DM peer resolution ─────────────────────────────────────────────────────────

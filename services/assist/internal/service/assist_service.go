@@ -15,6 +15,7 @@ const (
 	maxMessageLimit     = 10
 
 	systemPrompt = `You are a helpful chat assistant. Given the recent conversation history and the user's partial message, suggest exactly 3 natural and concise message completions in the same language as the conversation.
+You may include emojis in suggestions when they feel natural and match the tone of the conversation.
 Return ONLY a valid JSON array of 3 strings, like: ["completion 1", "completion 2", "completion 3"].
 No explanation, no markdown, no extra text.`
 )

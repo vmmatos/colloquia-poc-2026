@@ -250,6 +250,7 @@ function dismissToast(id: number) {
                 <NuxtLink
                   :to="`/channels/${ch.id}`"
                   class="flex-1 flex items-center gap-2 pl-4 pr-4 py-1.5 text-sm font-heading transition-colors"
+                  @click="isMobile && (sidebarOpen = false)"
                 >
                   <span class="text-muted-foreground">#</span>
                   <span class="flex-1 truncate">{{ ch.name }}</span>
@@ -323,6 +324,7 @@ function dismissToast(id: number) {
                   :to="`/channels/${ch.id}`"
                   class="flex-1 flex items-center gap-2 pl-4 pr-4 py-1.5 text-sm font-heading transition-colors"
                   :class="(unreadCounts[ch.id] ?? 0) > 0 ? 'font-semibold' : ''"
+                  @click="isMobile && (sidebarOpen = false)"
                 >
                   <!-- DM: avatar of the other person -->
                   <template v-if="ch.type === 'dm'">

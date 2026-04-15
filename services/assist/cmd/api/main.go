@@ -53,6 +53,21 @@ func main() {
 
 	assistSvc := service.NewAssistService(msgClient, llmProvider)
 
+	// Warm up the model so the first real request doesn't pay the cold-load cost.
+	// This also ensures keep_alive:-1 is applied via the real inference path.
+	go func() {
+		wCtx, wCancel := context.WithTimeout(context.Background(), 120*time.Second)
+		defer wCancel()
+		if _, err := llmProvider.Complete(wCtx, provider.CompletionRequest{
+			SystemPrompt: "respond with []",
+			UserPrompt:   "hi",
+		}); err != nil {
+			log.Printf("model warm-up: %v (non-fatal)", err)
+		} else {
+			log.Printf("model warm-up complete")
+		}
+	}()
+
 	grpcSrv := grpcserver.NewServer(grpcserver.NewAssistHandler(assistSvc))
 	httpSrv := api.NewServer(assistSvc, cfg)
 

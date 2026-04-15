@@ -16,7 +16,14 @@ async function handleSubmit() {
     await login(email.value, password.value)
     await navigateTo('/')
   } catch (e: any) {
-    error.value = e?.data?.message || e?.message || t('auth.login.error')
+    const status = e?.status ?? e?.response?.status
+    if (status === 401) {
+      error.value = t('auth.login.invalidCredentials')
+    } else if (status === 423) {
+      error.value = t('auth.login.accountLocked')
+    } else {
+      error.value = t('auth.login.error')
+    }
   } finally {
     loading.value = false
   }

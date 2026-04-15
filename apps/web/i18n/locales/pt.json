@@ -17,7 +17,9 @@
       "submit": "Entrar",
       "noAccount": "Ainda não tens conta?",
       "register": "Registar",
-      "error": "Falha no login. Tenta novamente."
+      "error": "Falha no login. Tenta novamente.",
+      "invalidCredentials": "Email ou palavra-passe inválidos.",
+      "accountLocked": "Demasiadas tentativas falhadas. Tenta novamente em 15 minutos."
     },
     "register": {
       "title": "Criar conta",
@@ -29,7 +31,8 @@
       "hasAccount": "Já tens conta?",
       "login": "Entrar",
       "passwordMismatch": "As palavras-passe não coincidem.",
-      "error": "Falha no registo. Tenta novamente."
+      "error": "Falha no registo. Tenta novamente.",
+      "emailTaken": "Já existe uma conta com este email."
     },
     "logout": "Sair"
   },

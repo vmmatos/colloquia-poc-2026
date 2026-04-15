@@ -16,7 +16,10 @@ import (
 var (
 	ErrUserNotFound      = errors.New("user not found")
 	ErrUserAlreadyExists = errors.New("user already exists")
+	ErrInvalidLanguage   = errors.New("invalid language")
 )
+
+var allowedLanguages = map[string]bool{"en": true, "pt": true}
 
 type UserResult struct {
 	ID        uuid.UUID
@@ -26,6 +29,7 @@ type UserResult struct {
 	Bio       string
 	Timezone  string
 	Status    string
+	Language  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -73,7 +77,11 @@ func (s *UsersService) BatchGetUsers(ctx context.Context, ids []uuid.UUID) ([]*U
 }
 
 // UpdateProfile applies partial updates: only non-nil fields override the current value.
-func (s *UsersService) UpdateProfile(ctx context.Context, id uuid.UUID, name, avatar, bio, timezone, status *string) (*UserResult, error) {
+func (s *UsersService) UpdateProfile(ctx context.Context, id uuid.UUID, name, avatar, bio, timezone, status, language *string) (*UserResult, error) {
+	if language != nil && !allowedLanguages[*language] {
+		return nil, ErrInvalidLanguage
+	}
+
 	current, err := s.repo.GetUserProfile(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -88,6 +96,7 @@ func (s *UsersService) UpdateProfile(ctx context.Context, id uuid.UUID, name, av
 		Bio:      current.Bio,
 		Timezone: current.Timezone,
 		Status:   current.Status,
+		Language: current.Language,
 	}
 	if name != nil {
 		params.Name = *name
@@ -103,6 +112,9 @@ func (s *UsersService) UpdateProfile(ctx context.Context, id uuid.UUID, name, av
 	}
 	if status != nil {
 		params.Status = *status
+	}
+	if language != nil {
+		params.Language = *language
 	}
 
 	profile, err := s.repo.UpdateUserProfile(ctx, id, params)
@@ -157,6 +169,7 @@ func toResult(p sqlc.UserProfile) *UserResult {
 		Bio:       p.Bio,
 		Timezone:  p.Timezone,
 		Status:    p.Status,
+		Language:  p.Language,
 		CreatedAt: p.CreatedAt.Time,
 		UpdatedAt: p.UpdatedAt.Time,
 	}

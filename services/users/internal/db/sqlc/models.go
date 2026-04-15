@@ -20,4 +20,5 @@ type UserProfile struct {
 	CreatedAt  pgtype.Timestamp
 	UpdatedAt  pgtype.Timestamp
 	LastSeenAt pgtype.Timestamp
+	Language   string
 }

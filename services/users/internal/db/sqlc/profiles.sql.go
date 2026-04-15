@@ -13,7 +13,7 @@ import (
 )
 
 const batchGetUserProfiles = `-- name: BatchGetUserProfiles :many
-SELECT id, email, name, avatar, bio, timezone, status, created_at, updated_at, last_seen_at FROM user_profiles WHERE id = ANY($1::uuid[])
+SELECT id, email, name, avatar, bio, timezone, status, created_at, updated_at, last_seen_at, language FROM user_profiles WHERE id = ANY($1::uuid[])
 `
 
 func (q *Queries) BatchGetUserProfiles(ctx context.Context, dollar_1 []uuid.UUID) ([]UserProfile, error) {
@@ -36,6 +36,7 @@ func (q *Queries) BatchGetUserProfiles(ctx context.Context, dollar_1 []uuid.UUID
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.LastSeenAt,
+			&i.Language,
 		); err != nil {
 			return nil, err
 		}
@@ -48,7 +49,7 @@ func (q *Queries) BatchGetUserProfiles(ctx context.Context, dollar_1 []uuid.UUID
 }
 
 const createUserProfile = `-- name: CreateUserProfile :one
-INSERT INTO user_profiles (id, email) VALUES ($1, $2) RETURNING id, email, name, avatar, bio, timezone, status, created_at, updated_at, last_seen_at
+INSERT INTO user_profiles (id, email) VALUES ($1, $2) RETURNING id, email, name, avatar, bio, timezone, status, created_at, updated_at, last_seen_at, language
 `
 
 type CreateUserProfileParams struct {
@@ -70,12 +71,13 @@ func (q *Queries) CreateUserProfile(ctx context.Context, arg CreateUserProfilePa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.LastSeenAt,
+		&i.Language,
 	)
 	return i, err
 }
 
 const getUserProfile = `-- name: GetUserProfile :one
-SELECT id, email, name, avatar, bio, timezone, status, created_at, updated_at, last_seen_at FROM user_profiles WHERE id = $1
+SELECT id, email, name, avatar, bio, timezone, status, created_at, updated_at, last_seen_at, language FROM user_profiles WHERE id = $1
 `
 
 func (q *Queries) GetUserProfile(ctx context.Context, id uuid.UUID) (UserProfile, error) {
@@ -92,12 +94,13 @@ func (q *Queries) GetUserProfile(ctx context.Context, id uuid.UUID) (UserProfile
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.LastSeenAt,
+		&i.Language,
 	)
 	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, email, name, avatar, bio, timezone, status, created_at, updated_at, last_seen_at FROM user_profiles ORDER BY created_at DESC LIMIT $1 OFFSET $2
+SELECT id, email, name, avatar, bio, timezone, status, created_at, updated_at, last_seen_at, language FROM user_profiles ORDER BY created_at DESC LIMIT $1 OFFSET $2
 `
 
 type ListUsersParams struct {
@@ -125,6 +128,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]UserPro
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.LastSeenAt,
+			&i.Language,
 		); err != nil {
 			return nil, err
 		}
@@ -137,7 +141,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]UserPro
 }
 
 const searchUsers = `-- name: SearchUsers :many
-SELECT id, email, name, avatar, bio, timezone, status, created_at, updated_at, last_seen_at FROM user_profiles
+SELECT id, email, name, avatar, bio, timezone, status, created_at, updated_at, last_seen_at, language FROM user_profiles
 WHERE name ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%'
 ORDER BY created_at DESC LIMIT $2 OFFSET $3
 `
@@ -168,6 +172,7 @@ func (q *Queries) SearchUsers(ctx context.Context, arg SearchUsersParams) ([]Use
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.LastSeenAt,
+			&i.Language,
 		); err != nil {
 			return nil, err
 		}
@@ -195,9 +200,10 @@ SET name       = $2,
     bio        = $4,
     timezone   = $5,
     status     = $6,
+    language   = $7,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, name, avatar, bio, timezone, status, created_at, updated_at, last_seen_at
+RETURNING id, email, name, avatar, bio, timezone, status, created_at, updated_at, last_seen_at, language
 `
 
 type UpdateUserProfileParams struct {
@@ -207,6 +213,7 @@ type UpdateUserProfileParams struct {
 	Bio      string
 	Timezone string
 	Status   string
+	Language string
 }
 
 func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (UserProfile, error) {
@@ -217,6 +224,7 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		arg.Bio,
 		arg.Timezone,
 		arg.Status,
+		arg.Language,
 	)
 	var i UserProfile
 	err := row.Scan(
@@ -230,6 +238,7 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.LastSeenAt,
+		&i.Language,
 	)
 	return i, err
 }

@@ -169,6 +169,7 @@ type UpdateProfileRequest struct {
 	Bio           *string                `protobuf:"bytes,4,opt,name=bio,proto3,oneof" json:"bio,omitempty"`
 	Timezone      *string                `protobuf:"bytes,5,opt,name=timezone,proto3,oneof" json:"timezone,omitempty"`
 	Status        *string                `protobuf:"bytes,6,opt,name=status,proto3,oneof" json:"status,omitempty"`
+	Language      *string                `protobuf:"bytes,7,opt,name=language,proto3,oneof" json:"language,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -245,6 +246,13 @@ func (x *UpdateProfileRequest) GetStatus() string {
 	return ""
 }
 
+func (x *UpdateProfileRequest) GetLanguage() string {
+	if x != nil && x.Language != nil {
+		return *x.Language
+	}
+	return ""
+}
+
 type UserProfile struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -256,6 +264,7 @@ type UserProfile struct {
 	Status        string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
 	CreatedAt     int64                  `protobuf:"varint,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt     int64                  `protobuf:"varint,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Language      string                 `protobuf:"bytes,10,opt,name=language,proto3" json:"language,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -351,6 +360,13 @@ func (x *UserProfile) GetUpdatedAt() int64 {
 		return x.UpdatedAt
 	}
 	return 0
+}
+
+func (x *UserProfile) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
 }
 
 type UserResponse struct {
@@ -652,19 +668,21 @@ const file_proto_users_proto_rawDesc = "" +
 	"\x0eGetUserRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"(\n" +
 	"\x14BatchGetUsersRequest\x12\x10\n" +
-	"\x03ids\x18\x01 \x03(\tR\x03ids\"\xe5\x01\n" +
+	"\x03ids\x18\x01 \x03(\tR\x03ids\"\x93\x02\n" +
 	"\x14UpdateProfileRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x1b\n" +
 	"\x06avatar\x18\x03 \x01(\tH\x01R\x06avatar\x88\x01\x01\x12\x15\n" +
 	"\x03bio\x18\x04 \x01(\tH\x02R\x03bio\x88\x01\x01\x12\x1f\n" +
 	"\btimezone\x18\x05 \x01(\tH\x03R\btimezone\x88\x01\x01\x12\x1b\n" +
-	"\x06status\x18\x06 \x01(\tH\x04R\x06status\x88\x01\x01B\a\n" +
+	"\x06status\x18\x06 \x01(\tH\x04R\x06status\x88\x01\x01\x12\x1f\n" +
+	"\blanguage\x18\a \x01(\tH\x05R\blanguage\x88\x01\x01B\a\n" +
 	"\x05_nameB\t\n" +
 	"\a_avatarB\x06\n" +
 	"\x04_bioB\v\n" +
 	"\t_timezoneB\t\n" +
-	"\a_status\"\xe3\x01\n" +
+	"\a_statusB\v\n" +
+	"\t_language\"\xff\x01\n" +
 	"\vUserProfile\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +
@@ -676,7 +694,9 @@ const file_proto_users_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\b \x01(\x03R\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\t \x01(\x03R\tupdatedAt\"6\n" +
+	"updated_at\x18\t \x01(\x03R\tupdatedAt\x12\x1a\n" +
+	"\blanguage\x18\n" +
+	" \x01(\tR\blanguage\"6\n" +
 	"\fUserResponse\x12&\n" +
 	"\x04user\x18\x01 \x01(\v2\x12.users.UserProfileR\x04user\"A\n" +
 	"\x15BatchGetUsersResponse\x12(\n" +

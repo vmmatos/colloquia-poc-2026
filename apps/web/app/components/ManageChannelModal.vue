@@ -12,6 +12,7 @@ const emit = defineEmits<{
   deleted: []
 }>()
 
+const { t } = useI18n()
 const { auth } = useAuth()
 const { fetchMembers, addMember, removeMember, deleteChannel } = useChannels()
 const config = useRuntimeConfig()
@@ -74,7 +75,7 @@ async function loadData() {
       )
     )
     profileMap.value = Object.fromEntries(
-      profiles.flatMap((p, i) => p ? [[memberList[i].user_id, p]] : [])
+      profiles.flatMap((p, i) => (p && memberList[i]) ? [[memberList[i]!.user_id, p]] : [])
     )
 
     // fetch all users for autocomplete (fire-and-forget)
@@ -82,7 +83,7 @@ async function loadData() {
       headers: { Authorization: `Bearer ${auth.value.access_token}` },
     }).then(res => { allUsers.value = res ?? [] }).catch(() => {})
   } catch {
-    loadError.value = 'Erro ao carregar dados do canal.'
+    loadError.value = t('channel.manage.loadError')
   }
 }
 
@@ -142,7 +143,7 @@ async function doAddUser(user: UserProfile) {
     userResults.value = []
   } catch (err: unknown) {
     const msg = (err as { data?: { error?: string } })?.data?.error
-    addError.value = msg ?? 'Erro ao adicionar membro.'
+    addError.value = msg ?? t('channel.manage.addError')
   } finally {
     addLoading.value = false
   }
@@ -169,7 +170,7 @@ async function doDelete() {
     close()
   } catch (err: unknown) {
     const msg = (err as { data?: { error?: string } })?.data?.error
-    deleteError.value = msg ?? 'Erro ao eliminar o canal.'
+    deleteError.value = msg ?? t('channel.manage.deleteError')
   } finally {
     deleteLoading.value = false
   }
@@ -178,7 +179,7 @@ async function doDelete() {
 function roleBadge(role: string) {
   if (role === 'owner') return { label: 'owner', cls: 'bg-primary/20 text-primary' }
   if (role === 'admin') return { label: 'admin', cls: 'bg-secondary text-foreground' }
-  return { label: 'membro', cls: 'bg-secondary/50 text-muted-foreground' }
+  return { label: t('channel.manage.roleMember'), cls: 'bg-secondary/50 text-muted-foreground' }
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -233,7 +234,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               ]"
               @click="activeTab = 'members'"
             >
-              Membros <span class="text-xs text-muted-foreground ml-1">({{ members.length }})</span>
+              {{ $t('channel.manage.membersTab') }} <span class="text-xs text-muted-foreground ml-1">({{ members.length }})</span>
             </button>
             <button
               v-if="myRole === 'owner'"
@@ -245,7 +246,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               ]"
               @click="activeTab = 'settings'"
             >
-              Configurações
+              {{ $t('channel.manage.settingsTab') }}
             </button>
           </div>
 
@@ -273,7 +274,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   class="text-xs font-heading text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-30"
                   @click="doRemoveMember(m.user_id)"
                 >
-                  Remover
+                  {{ $t('channel.manage.remove') }}
                 </button>
                 <span :class="['text-xs px-2 py-0.5 rounded-full font-heading', roleBadge(m.role).cls]">
                   {{ roleBadge(m.role).label }}
@@ -284,13 +285,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <!-- Add member section -->
             <div v-if="myRole === 'owner' || myRole === 'admin'" class="border-t border-border px-4 py-4">
               <p class="text-xs font-heading font-medium text-muted-foreground uppercase tracking-wider mb-3">
-                Adicionar membro
+                {{ $t('channel.manage.addMember') }}
               </p>
               <div class="relative">
                 <input
                   v-model="memberSearch"
                   type="text"
-                  placeholder="Pesquisar utilizadores..."
+                  :placeholder="$t('channel.manage.searchPlaceholder')"
                   class="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-heading text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
                 />
                 <!-- Dropdown -->
@@ -313,7 +314,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   v-else-if="memberSearch.length > 0 && memberSearch.length < 3"
                   class="text-xs text-muted-foreground font-body mt-1.5"
                 >
-                  Escreve mais {{ 3 - memberSearch.length }} letra(s) para pesquisar…
+                  {{ $t('channel.manage.searchHint', { n: 3 - memberSearch.length }) }}
                 </p>
               </div>
               <p v-if="addError" class="text-xs text-destructive font-body mt-1.5">{{ addError }}</p>
@@ -323,9 +324,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <!-- Settings tab (owner only) -->
           <div v-else-if="activeTab === 'settings'" class="flex-1 overflow-y-auto px-6 py-5">
             <div class="border border-destructive/30 rounded-lg p-5">
-              <h3 class="font-heading font-semibold text-foreground text-sm mb-1">Eliminar canal</h3>
+              <h3 class="font-heading font-semibold text-foreground text-sm mb-1">{{ $t('channel.manage.deleteTitle') }}</h3>
               <p class="text-xs font-body text-muted-foreground mb-4">
-                Esta ação é irreversível. O canal e todo o seu conteúdo serão permanentemente eliminados.
+                {{ $t('channel.manage.deleteWarning') }}
               </p>
 
               <div v-if="!confirmDelete">
@@ -333,24 +334,24 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   class="px-4 py-2 text-sm font-heading text-destructive border border-destructive/40 rounded-md hover:bg-destructive/10 transition-colors"
                   @click="confirmDelete = true"
                 >
-                  Eliminar canal
+                  {{ $t('channel.manage.deleteButton') }}
                 </button>
               </div>
 
               <div v-else class="space-y-3">
                 <p class="text-sm font-heading text-foreground">
-                  Tens a certeza? Escreve o nome do canal para confirmar:
+                  {{ $t('channel.manage.deleteConfirm') }}
                 </p>
                 <p class="font-mono text-sm text-primary">{{ channel?.name }}</p>
                 <div class="flex gap-3">
                   <UiButton variant="danger" :loading="deleteLoading" @click="doDelete">
-                    Sim, eliminar
+                    {{ $t('channel.manage.deleteSubmit') }}
                   </UiButton>
                   <button
                     class="px-4 py-2 text-sm font-heading text-muted-foreground hover:text-foreground transition-colors"
                     @click="confirmDelete = false"
                   >
-                    Cancelar
+                    {{ $t('common.cancel') }}
                   </button>
                 </div>
                 <p v-if="deleteError" class="text-xs text-destructive font-body">{{ deleteError }}</p>

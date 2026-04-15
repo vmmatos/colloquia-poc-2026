@@ -45,13 +45,13 @@ function onOutsideClick(e: MouseEvent) {
     >
       <!-- Header -->
       <div class="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
-        <span class="text-sm font-heading font-semibold text-foreground">Notificações</span>
+        <span class="text-sm font-heading font-semibold text-foreground">{{ $t('notifications.title') }}</span>
         <button
           v-if="unreadCount > 0"
           class="text-xs text-muted-foreground hover:text-primary transition-colors font-heading"
           @click="markAllRead"
         >
-          Marcar todas
+          {{ $t('notifications.markAll') }}
         </button>
       </div>
 
@@ -93,7 +93,7 @@ function onOutsideClick(e: MouseEvent) {
         </div>
 
         <p v-if="notifications.length === 0" class="text-center text-muted-foreground text-sm font-body italic py-6">
-          Sem notificações
+          {{ $t('notifications.empty') }}
         </p>
       </div>
     </div>

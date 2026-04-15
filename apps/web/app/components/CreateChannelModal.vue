@@ -5,6 +5,7 @@ import type { UserProfile } from '../../shared/types/auth'
 defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
+const { t } = useI18n()
 const { createChannel } = useChannels()
 const { auth } = useAuth()
 const config = useRuntimeConfig()
@@ -72,7 +73,7 @@ async function submit() {
   error.value = null
   const trimmedName = name.value.trim()
   if (!trimmedName) {
-    error.value = 'O nome do canal é obrigatório.'
+    error.value = t('channel.create.nameRequired')
     return
   }
 
@@ -92,7 +93,7 @@ async function submit() {
     await navigateTo(`/channels/${ch.id}`)
   } catch (err: unknown) {
     const msg = (err as { data?: { error?: string } })?.data?.error
-    error.value = msg ?? 'Erro ao criar o canal. Tenta novamente.'
+    error.value = msg ?? t('channel.create.error')
   } finally {
     loading.value = false
   }
@@ -123,7 +124,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         <div class="relative z-10 w-full max-w-md bg-card border border-border rounded-lg shadow-xl">
           <!-- Header -->
           <div class="flex items-center justify-between px-6 py-4 border-b border-border">
-            <h2 class="font-heading font-semibold text-foreground text-base">Criar canal</h2>
+            <h2 class="font-heading font-semibold text-foreground text-base">{{ $t('channel.create.title') }}</h2>
             <button
               class="text-muted-foreground hover:text-foreground transition-colors"
               @click="close"
@@ -139,12 +140,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <!-- Name -->
             <div>
               <label class="block text-xs font-heading font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                Nome <span class="text-destructive">*</span>
+                {{ $t('channel.create.nameLabel') }} <span class="text-destructive">*</span>
               </label>
               <input
                 v-model="name"
                 type="text"
-                placeholder="ex: marketing, anúncios"
+                :placeholder="$t('channel.create.namePlaceholder')"
                 maxlength="80"
                 class="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-heading text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
                 @keydown.enter="submit"
@@ -154,12 +155,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <!-- Description -->
             <div>
               <label class="block text-xs font-heading font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                Descrição <span class="text-muted-foreground font-normal">(opcional)</span>
+                {{ $t('channel.create.descLabel') }} <span class="text-muted-foreground font-normal">{{ $t('channel.create.descOptional') }}</span>
               </label>
               <input
                 v-model="description"
                 type="text"
-                placeholder="Para que serve este canal?"
+                :placeholder="$t('channel.create.descPlaceholder')"
                 maxlength="255"
                 class="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-heading text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
               />
@@ -168,8 +169,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <!-- Private toggle -->
             <div class="flex items-center justify-between">
               <div>
-                <p class="text-sm font-heading text-foreground">Canal privado</p>
-                <p class="text-xs font-body text-muted-foreground mt-0.5">Só quem for adicionado pode ver e entrar</p>
+                <p class="text-sm font-heading text-foreground">{{ $t('channel.create.privateLabel') }}</p>
+                <p class="text-xs font-body text-muted-foreground mt-0.5">{{ $t('channel.create.privateHint') }}</p>
               </div>
               <button
                 :class="[
@@ -190,7 +191,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <!-- Initial members -->
             <div>
               <label class="block text-xs font-heading font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                Membros iniciais <span class="text-muted-foreground font-normal">(opcional)</span>
+                {{ $t('channel.create.membersLabel') }} <span class="text-muted-foreground font-normal">{{ $t('channel.create.membersOptional') }}</span>
               </label>
               <!-- Selected members chips -->
               <div v-if="selectedMembers.length > 0" class="flex flex-wrap gap-1.5 mb-2">
@@ -216,7 +217,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 <input
                   v-model="memberQuery"
                   type="text"
-                  placeholder="Pesquisar utilizadores..."
+                  :placeholder="$t('channel.create.searchPlaceholder')"
                   class="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-heading text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
                 />
                 <ul
@@ -246,10 +247,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               class="px-4 py-2 text-sm font-heading text-muted-foreground hover:text-foreground transition-colors"
               @click="close"
             >
-              Cancelar
+              {{ $t('common.cancel') }}
             </button>
             <UiButton :loading="loading" @click="submit">
-              Criar canal
+              {{ $t('channel.create.submit') }}
             </UiButton>
           </div>
         </div>

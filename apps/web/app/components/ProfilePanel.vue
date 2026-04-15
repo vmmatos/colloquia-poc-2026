@@ -7,7 +7,9 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const { t } = useI18n()
 const { auth, getProfile, refreshToken } = useAuth()
+const { currentLocale, availableLocales, setLocale } = useLocale()
 
 const displayName = ref('')
 const bio = ref('')
@@ -25,7 +27,7 @@ watch(() => props.open, async (val) => {
     displayName.value = profile.name || ''
     bio.value = profile.bio || ''
   } catch {
-    error.value = 'Falha ao carregar perfil.'
+    error.value = t('profile.loadError')
   } finally {
     loading.value = false
   }
@@ -52,10 +54,10 @@ async function saveProfile() {
         await patchProfile()
         emit('close')
       } catch {
-        error.value = 'Sessão expirada. Faz login novamente.'
+        error.value = t('profile.sessionExpired')
       }
     } else {
-      error.value = e?.data?.message || e?.message || 'Falha ao guardar perfil.'
+      error.value = e?.data?.message || e?.message || t('profile.saveError')
     }
   } finally {
     saving.value = false
@@ -82,7 +84,7 @@ const initials = computed(() => {
         <div class="absolute right-0 top-0 h-full w-full sm:w-80 bg-surface-overlay/95 backdrop-blur-md border-l border-border z-50 flex flex-col animate-slide-in">
           <!-- Header -->
           <div class="h-14 flex items-center justify-between px-5 border-b border-border flex-shrink-0">
-            <span class="text-sm font-heading font-semibold text-foreground">Perfil</span>
+            <span class="text-sm font-heading font-semibold text-foreground">{{ $t('profile.title') }}</span>
             <button
               class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
               @click="emit('close')"
@@ -96,7 +98,7 @@ const initials = computed(() => {
           <!-- Content -->
           <div class="flex-1 overflow-y-auto py-6 px-5 space-y-6">
             <div v-if="loading" class="flex items-center justify-center py-12">
-              <span class="text-muted-foreground text-sm font-body italic">A carregar...</span>
+              <span class="text-muted-foreground text-sm font-body italic">{{ $t('common.loading') }}</span>
             </div>
 
             <template v-else>
@@ -112,12 +114,12 @@ const initials = computed(() => {
               <!-- Name -->
               <div>
                 <label class="block text-xs font-heading text-muted-foreground mb-1.5 uppercase tracking-wider">
-                  Nome de exibição
+                  {{ $t('profile.displayName') }}
                 </label>
                 <input
                   v-model="displayName"
                   type="text"
-                  placeholder="O teu nome"
+                  :placeholder="$t('profile.displayNamePlaceholder')"
                   class="profile-input"
                 />
               </div>
@@ -125,20 +127,40 @@ const initials = computed(() => {
               <!-- Bio -->
               <div>
                 <label class="block text-xs font-heading text-muted-foreground mb-1.5 uppercase tracking-wider">
-                  Bio
+                  {{ $t('profile.bio') }}
                 </label>
                 <textarea
                   v-model="bio"
                   rows="3"
-                  placeholder="Fala um pouco sobre ti..."
+                  :placeholder="$t('profile.bioPlaceholder')"
                   class="profile-input resize-none font-body italic"
                 />
+              </div>
+
+              <!-- Language selector -->
+              <div>
+                <label class="block text-xs font-heading text-muted-foreground mb-1.5 uppercase tracking-wider">
+                  {{ $t('profile.language') }}
+                </label>
+                <select
+                  :value="currentLocale"
+                  class="profile-input"
+                  @change="setLocale(($event.target as HTMLSelectElement).value)"
+                >
+                  <option
+                    v-for="loc in availableLocales"
+                    :key="loc.code"
+                    :value="loc.code"
+                  >
+                    {{ loc.name }}
+                  </option>
+                </select>
               </div>
 
               <!-- User ID (read-only) -->
               <div class="pt-2 border-t border-border">
                 <label class="block text-xs font-heading text-muted-foreground mb-1.5 uppercase tracking-wider">
-                  ID de utilizador
+                  {{ $t('profile.userId') }}
                 </label>
                 <p class="text-sm font-heading text-muted-foreground truncate">{{ auth.user_id || '—' }}</p>
               </div>
@@ -154,7 +176,7 @@ const initials = computed(() => {
               class="w-full bg-primary text-primary-foreground rounded-md py-2 text-sm font-heading font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               @click="saveProfile"
             >
-              {{ saving ? 'A guardar...' : 'Guardar alterações' }}
+              {{ saving ? $t('common.saving') : $t('common.save') }}
             </button>
           </div>
         </div>

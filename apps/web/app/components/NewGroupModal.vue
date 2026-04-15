@@ -7,6 +7,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ close: [] }>()
 
+const { t } = useI18n()
 const { createChannel } = useChannels()
 const { auth } = useAuth()
 const { resolveUser, prefetchUsers } = useUsersCache()
@@ -67,7 +68,7 @@ function removeMember(userId: string) {
 
 async function submit() {
   if (extraMembers.value.length === 0) {
-    error.value = 'Adiciona pelo menos uma pessoa ao grupo.'
+    error.value = t('group.noMembersError')
     return
   }
   error.value = null
@@ -78,7 +79,7 @@ async function submit() {
       ...extraMembers.value.map(m => m.user_id),
     ]
     const ch = await createChannel({
-      name: groupName.value.trim() || 'Grupo',
+      name: groupName.value.trim() || t('group.groupFallback'),
       is_private: true,
       type: 'group',
       initial_member_ids: allMemberIds,
@@ -87,7 +88,7 @@ async function submit() {
     await navigateTo(`/channels/${ch.id}`)
   } catch (err: unknown) {
     const msg = (err as { data?: { error?: string } })?.data?.error
-    error.value = msg ?? 'Erro ao criar grupo. Tenta novamente.'
+    error.value = msg ?? t('group.error')
   } finally {
     loading.value = false
   }
@@ -127,7 +128,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         <div class="relative z-10 w-full max-w-md bg-card border border-border rounded-lg shadow-xl">
           <!-- Header -->
           <div class="flex items-center justify-between px-6 py-4 border-b border-border">
-            <h2 class="font-heading font-semibold text-foreground text-base">Adicionar pessoas à conversa</h2>
+            <h2 class="font-heading font-semibold text-foreground text-base">{{ $t('group.title') }}</h2>
             <button
               class="text-muted-foreground hover:text-foreground transition-colors"
               @click="close"
@@ -143,7 +144,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <!-- Existing members (read-only chips) -->
             <div>
               <label class="block text-xs font-heading font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                Conversa actual
+                {{ $t('group.currentConversation') }}
               </label>
               <div class="flex flex-wrap gap-1.5">
                 <span
@@ -159,12 +160,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <!-- Group name (optional) -->
             <div>
               <label class="block text-xs font-heading font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                Nome do grupo <span class="text-muted-foreground font-normal">(opcional)</span>
+                {{ $t('group.groupNameLabel') }} <span class="text-muted-foreground font-normal">{{ $t('group.groupNameOptional') }}</span>
               </label>
               <input
                 v-model="groupName"
                 type="text"
-                placeholder="ex: projecto x, equipa design"
+                :placeholder="$t('group.groupNamePlaceholder')"
                 maxlength="80"
                 class="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-heading text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
               />
@@ -173,7 +174,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <!-- Add new members -->
             <div>
               <label class="block text-xs font-heading font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                Adicionar pessoas <span class="text-destructive">*</span>
+                {{ $t('group.addPeopleLabel') }} <span class="text-destructive">*</span>
               </label>
 
               <!-- Selected extra members -->
@@ -200,7 +201,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 <input
                   v-model="memberQuery"
                   type="text"
-                  placeholder="Pesquisar utilizadores..."
+                  :placeholder="$t('group.searchPlaceholder')"
                   class="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-heading text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
                 />
                 <ul
@@ -229,10 +230,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               class="px-4 py-2 text-sm font-heading text-muted-foreground hover:text-foreground transition-colors"
               @click="close"
             >
-              Cancelar
+              {{ $t('common.cancel') }}
             </button>
             <UiButton :loading="loading" @click="submit">
-              Criar grupo
+              {{ $t('group.submit') }}
             </UiButton>
           </div>
         </div>

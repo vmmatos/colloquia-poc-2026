@@ -4,6 +4,7 @@ import type { UserProfile } from '../../shared/types/auth'
 defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
+const { t } = useI18n()
 const { createDM } = useChannels()
 const { auth } = useAuth()
 const config = useRuntimeConfig()
@@ -45,7 +46,7 @@ async function selectUser(user: UserProfile) {
     await navigateTo(`/channels/${ch.id}`)
   } catch (err: unknown) {
     const msg = (err as { data?: { error?: string } })?.data?.error
-    error.value = msg ?? 'Erro ao abrir conversa. Tenta novamente.'
+    error.value = msg ?? t('dm.error')
   } finally {
     loading.value = false
   }
@@ -83,7 +84,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         <div class="relative z-10 w-full max-w-sm bg-card border border-border rounded-lg shadow-xl">
           <!-- Header -->
           <div class="flex items-center justify-between px-6 py-4 border-b border-border">
-            <h2 class="font-heading font-semibold text-foreground text-base">Nova mensagem directa</h2>
+            <h2 class="font-heading font-semibold text-foreground text-base">{{ $t('dm.title') }}</h2>
             <button
               class="text-muted-foreground hover:text-foreground transition-colors"
               @click="close"
@@ -100,7 +101,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               <input
                 v-model="query"
                 type="text"
-                placeholder="Pesquisar utilizadores..."
+                :placeholder="$t('dm.searchPlaceholder')"
                 autofocus
                 class="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-heading text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
               />
@@ -133,7 +134,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               v-else-if="query.trim().length >= 2 && !searchLoading"
               class="text-xs font-body text-muted-foreground text-center py-2"
             >
-              Nenhum utilizador encontrado.
+              {{ $t('dm.noResults') }}
             </p>
 
             <p v-if="error" class="text-xs text-destructive font-body">{{ error }}</p>

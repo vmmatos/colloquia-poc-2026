@@ -42,9 +42,9 @@ onMounted(async () => {
         </svg>
       </div>
       <div>
-        <h2 class="font-heading font-semibold text-foreground text-base">Sem canais ainda</h2>
+        <h2 class="font-heading font-semibold text-foreground text-base">{{ $t('home.noChannels') }}</h2>
         <p class="text-sm font-body text-muted-foreground mt-1">
-          Cria o teu primeiro canal para começar a colaborar.
+          {{ $t('home.noChannelsHint') }}
         </p>
       </div>
     </div>

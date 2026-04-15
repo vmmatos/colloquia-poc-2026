@@ -14,6 +14,7 @@ SET name       = $2,
     bio        = $4,
     timezone   = $5,
     status     = $6,
+    language   = $7,
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;

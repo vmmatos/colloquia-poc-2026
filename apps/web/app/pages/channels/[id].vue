@@ -4,6 +4,7 @@ import { useMessageStore, messageToDisplay, type DisplayMessage } from '~/compos
 
 definePageMeta({ middleware: 'auth' })
 
+const { t } = useI18n()
 const { auth } = useAuth()
 const { fetchChannel, fetchMembers } = useChannels()
 const { fetchMessages, sendMessage: apiSendMessage } = useMessaging()
@@ -44,15 +45,15 @@ const peerName = computed(() => peerUserId.value ? resolveUser(peerUserId.value)
 
 const channelDisplayName = computed(() => {
   if (isDM.value) return peerName.value
-  if (isGroup.value) return channel.value?.name || 'Grupo'
+  if (isGroup.value) return channel.value?.name || t('sidebar.groupFallback')
   return channel.value?.name ?? '...'
 })
 
 const inputPlaceholder = computed(() => {
-  if (isAgentMode.value) return 'Pergunta ao agente LLM...'
-  if (isDM.value) return `Mensagem para ${peerName.value}`
-  if (isGroup.value) return `Mensagem para ${channel.value?.name || 'o grupo'}`
-  return `Mensagem para #${channel.value?.name ?? ''}`
+  if (isAgentMode.value) return t('chat.agentPlaceholder')
+  if (isDM.value) return t('chat.dmPlaceholder', { name: peerName.value })
+  if (isGroup.value) return t('chat.groupPlaceholder', { name: channel.value?.name || t('sidebar.groupFallback') })
+  return t('chat.channelPlaceholder', { name: channel.value?.name ?? '' })
 })
 
 // ── Scroll ─────────────────────────────────────────────────────────────────────
@@ -90,7 +91,7 @@ async function loadChannel() {
     // setHistory merges history with any live SSE events that arrived during the fetch.
     msgStore.setHistory(channelId.value, history.map(m => messageToDisplay(m, resolveUser)))
   } catch {
-    loadError.value = 'Canal não encontrado ou sem acesso.'
+    loadError.value = t('chat.notFound')
   }
 }
 
@@ -287,7 +288,7 @@ onUnmounted(() => {
           <button
             v-if="isDM && channel"
             class="text-muted-foreground hover:text-foreground transition-colors"
-            title="Adicionar pessoas à conversa"
+            :title="$t('chat.addPeople')"
             @click="showNewGroup = true"
           >
             <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -299,7 +300,7 @@ onUnmounted(() => {
           <button
             v-if="isAdminOrOwner && channel && !isDM"
             class="text-muted-foreground hover:text-foreground transition-colors"
-            title="Gerir canal"
+            :title="$t('sidebar.manageChannel')"
             @click="showManage = true"
           >
             <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -333,14 +334,14 @@ onUnmounted(() => {
 
         <div v-if="messages.length === 0 && channel" class="min-h-full flex items-center justify-center">
           <p class="text-muted-foreground font-body text-sm italic text-center">
-            Sem mensagens ainda. Começa a conversa!
+            {{ $t('chat.empty') }}
           </p>
         </div>
       </div>
 
       <!-- Archived channel banner -->
       <div v-if="channel?.archived" class="px-4 md:px-6 py-2 text-xs text-muted-foreground bg-surface border-t border-border font-body italic">
-        Este canal está arquivado. Não é possível enviar mensagens.
+        {{ $t('chat.archived') }}
       </div>
 
       <!-- Message input -->
@@ -433,7 +434,7 @@ onUnmounted(() => {
           </button>
         </div>
         <p v-if="isAgentMode" class="text-xs text-primary/70 font-heading mt-1.5 ml-1">
-          Modo agente activo — a resposta será gerada por LLM
+          {{ $t('chat.agentModeActive') }}
         </p>
       </div>
     </div>

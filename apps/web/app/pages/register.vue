@@ -1,6 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'guest', layout: 'auth' })
 
+const { t } = useI18n()
 const { register } = useAuth()
 
 const email = ref('')
@@ -15,7 +16,7 @@ async function handleSubmit() {
   confirmError.value = ''
 
   if (password.value !== confirmPassword.value) {
-    confirmError.value = 'As palavras-passe não coincidem.'
+    confirmError.value = t('auth.register.passwordMismatch')
     return
   }
 
@@ -24,7 +25,7 @@ async function handleSubmit() {
     await register(email.value, password.value)
     await navigateTo('/')
   } catch (e: any) {
-    error.value = e?.data?.message || e?.message || 'Falha no registo. Tenta novamente.'
+    error.value = e?.data?.message || e?.message || t('auth.register.error')
   } finally {
     loading.value = false
   }
@@ -35,26 +36,26 @@ async function handleSubmit() {
   <UiCard>
     <form class="space-y-4" @submit.prevent="handleSubmit">
       <div class="mb-2">
-        <h2 class="text-lg font-heading font-semibold text-foreground">Criar conta</h2>
-        <p class="text-xs font-body text-muted-foreground mt-0.5">Junta-te ao Colloquia</p>
+        <h2 class="text-lg font-heading font-semibold text-foreground">{{ $t('auth.register.title') }}</h2>
+        <p class="text-xs font-body text-muted-foreground mt-0.5">{{ $t('auth.register.subtitle') }}</p>
       </div>
 
       <UiInput
         v-model="email"
         type="email"
-        placeholder="Email"
+        :placeholder="$t('auth.register.emailPlaceholder')"
         :error="null"
       />
       <UiInput
         v-model="password"
         type="password"
-        placeholder="Palavra-passe"
+        :placeholder="$t('auth.register.passwordPlaceholder')"
         :error="null"
       />
       <UiInput
         v-model="confirmPassword"
         type="password"
-        placeholder="Confirmar palavra-passe"
+        :placeholder="$t('auth.register.confirmPlaceholder')"
         :error="confirmError || null"
       />
 
@@ -63,14 +64,14 @@ async function handleSubmit() {
       </div>
 
       <UiButton type="submit" :loading="loading" class="w-full">
-        Criar conta
+        {{ $t('auth.register.submit') }}
       </UiButton>
     </form>
 
     <p class="mt-4 text-center text-xs font-heading text-muted-foreground">
-      Já tens conta?
+      {{ $t('auth.register.hasAccount') }}
       <NuxtLink to="/login" class="text-primary hover:text-primary/80 transition-colors">
-        Entrar
+        {{ $t('auth.register.login') }}
       </NuxtLink>
     </p>
   </UiCard>

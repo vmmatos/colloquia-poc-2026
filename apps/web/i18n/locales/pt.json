@@ -1,0 +1,134 @@
+{
+  "common": {
+    "save": "Guardar alterações",
+    "saving": "A guardar...",
+    "cancel": "Cancelar",
+    "loading": "A carregar...",
+    "retry": "Tenta novamente",
+    "profile": "Perfil"
+  },
+  "auth": {
+    "tagline": "A tua plataforma de colaboração",
+    "login": {
+      "title": "Entrar",
+      "subtitle": "Bem-vindo de volta",
+      "emailPlaceholder": "Email",
+      "passwordPlaceholder": "Palavra-passe",
+      "submit": "Entrar",
+      "noAccount": "Ainda não tens conta?",
+      "register": "Registar",
+      "error": "Falha no login. Tenta novamente."
+    },
+    "register": {
+      "title": "Criar conta",
+      "subtitle": "Junta-te ao Colloquia",
+      "emailPlaceholder": "Email",
+      "passwordPlaceholder": "Palavra-passe",
+      "confirmPlaceholder": "Confirmar palavra-passe",
+      "submit": "Criar conta",
+      "hasAccount": "Já tens conta?",
+      "login": "Entrar",
+      "passwordMismatch": "As palavras-passe não coincidem.",
+      "error": "Falha no registo. Tenta novamente."
+    },
+    "logout": "Sair"
+  },
+  "sidebar": {
+    "channels": "Canais",
+    "dms": "Mensagens directas",
+    "createChannel": "Criar canal",
+    "createFirstChannel": "Criar primeiro canal...",
+    "manageChannel": "Gerir canal",
+    "newDM": "Nova mensagem directa",
+    "newDMPlaceholder": "Nova mensagem directa...",
+    "groupFallback": "Grupo"
+  },
+  "profile": {
+    "title": "Perfil",
+    "displayName": "Nome de exibição",
+    "displayNamePlaceholder": "O teu nome",
+    "bio": "Bio",
+    "bioPlaceholder": "Fala um pouco sobre ti...",
+    "userId": "ID de utilizador",
+    "language": "Língua",
+    "loadError": "Falha ao carregar perfil.",
+    "saveError": "Falha ao guardar perfil.",
+    "sessionExpired": "Sessão expirada. Faz login novamente."
+  },
+  "chat": {
+    "agentPlaceholder": "Pergunta ao agente LLM...",
+    "dmPlaceholder": "Mensagem para {name}",
+    "groupPlaceholder": "Mensagem para {name}",
+    "channelPlaceholder": "Mensagem para #{name}",
+    "empty": "Sem mensagens ainda. Começa a conversa!",
+    "archived": "Este canal está arquivado. Não é possível enviar mensagens.",
+    "agentModeActive": "Modo agente activo — a resposta será gerada por LLM",
+    "notFound": "Canal não encontrado ou sem acesso.",
+    "addPeople": "Adicionar pessoas à conversa"
+  },
+  "channel": {
+    "create": {
+      "title": "Criar canal",
+      "namePlaceholder": "ex: marketing, anúncios",
+      "nameLabel": "Nome",
+      "descLabel": "Descrição",
+      "descPlaceholder": "Para que serve este canal?",
+      "descOptional": "(opcional)",
+      "privateLabel": "Canal privado",
+      "privateHint": "Só quem for adicionado pode ver e entrar",
+      "membersLabel": "Membros iniciais",
+      "membersOptional": "(opcional)",
+      "searchPlaceholder": "Pesquisar utilizadores...",
+      "submit": "Criar canal",
+      "nameRequired": "O nome do canal é obrigatório.",
+      "error": "Erro ao criar o canal. Tenta novamente."
+    },
+    "manage": {
+      "membersTab": "Membros",
+      "settingsTab": "Configurações",
+      "addMember": "Adicionar membro",
+      "searchPlaceholder": "Pesquisar utilizadores...",
+      "searchHint": "Escreve mais {n} letra(s) para pesquisar…",
+      "remove": "Remover",
+      "loadError": "Erro ao carregar dados do canal.",
+      "addError": "Erro ao adicionar membro.",
+      "deleteTitle": "Eliminar canal",
+      "deleteWarning": "Esta ação é irreversível. O canal e todo o seu conteúdo serão permanentemente eliminados.",
+      "deleteButton": "Eliminar canal",
+      "deleteConfirm": "Tens a certeza? Escreve o nome do canal para confirmar:",
+      "deleteSubmit": "Sim, eliminar",
+      "deleteError": "Erro ao eliminar o canal.",
+      "roleMember": "membro"
+    }
+  },
+  "dm": {
+    "title": "Nova mensagem directa",
+    "searchPlaceholder": "Pesquisar utilizadores...",
+    "noResults": "Nenhum utilizador encontrado.",
+    "error": "Erro ao abrir conversa. Tenta novamente."
+  },
+  "group": {
+    "title": "Adicionar pessoas à conversa",
+    "currentConversation": "Conversa actual",
+    "groupNameLabel": "Nome do grupo",
+    "groupNameOptional": "(opcional)",
+    "groupNamePlaceholder": "ex: projecto x, equipa design",
+    "addPeopleLabel": "Adicionar pessoas",
+    "searchPlaceholder": "Pesquisar utilizadores...",
+    "submit": "Criar grupo",
+    "groupFallback": "Grupo",
+    "noMembersError": "Adiciona pelo menos uma pessoa ao grupo.",
+    "error": "Erro ao criar grupo. Tenta novamente."
+  },
+  "home": {
+    "noChannels": "Sem canais ainda",
+    "noChannelsHint": "Cria o teu primeiro canal para começar a colaborar."
+  },
+  "notifications": {
+    "title": "Notificações",
+    "markAll": "Marcar todas",
+    "empty": "Sem notificações",
+    "newMessage": "Nova mensagem em {channel}",
+    "now": "agora"
+  }
+}

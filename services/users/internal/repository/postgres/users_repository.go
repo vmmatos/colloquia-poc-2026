@@ -38,6 +38,7 @@ func (r *UsersRepository) UpdateUserProfile(ctx context.Context, id uuid.UUID, p
 		Bio:      params.Bio,
 		Timezone: params.Timezone,
 		Status:   params.Status,
+		Language: params.Language,
 	})
 }
 

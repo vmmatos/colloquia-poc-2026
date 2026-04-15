@@ -15,6 +15,7 @@ export interface UserProfile {
   name: string
   avatar_url: string
   bio: string
+  language?: 'en' | 'pt'
   created_at: string
   updated_at: string
 }

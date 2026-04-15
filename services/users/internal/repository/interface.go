@@ -14,6 +14,7 @@ type UpdateParams struct {
 	Bio      string
 	Timezone string
 	Status   string
+	Language string
 }
 
 type IUsersRepository interface {

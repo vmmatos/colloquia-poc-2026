@@ -1,6 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'guest', layout: 'auth' })
 
+const { t } = useI18n()
 const { login } = useAuth()
 
 const email = ref('')
@@ -15,7 +16,7 @@ async function handleSubmit() {
     await login(email.value, password.value)
     await navigateTo('/')
   } catch (e: any) {
-    error.value = e?.data?.message || e?.message || 'Falha no login. Tenta novamente.'
+    error.value = e?.data?.message || e?.message || t('auth.login.error')
   } finally {
     loading.value = false
   }
@@ -26,20 +27,20 @@ async function handleSubmit() {
   <UiCard>
     <form class="space-y-4" @submit.prevent="handleSubmit">
       <div class="mb-2">
-        <h2 class="text-lg font-heading font-semibold text-foreground">Entrar</h2>
-        <p class="text-xs font-body text-muted-foreground mt-0.5">Bem-vindo de volta</p>
+        <h2 class="text-lg font-heading font-semibold text-foreground">{{ $t('auth.login.title') }}</h2>
+        <p class="text-xs font-body text-muted-foreground mt-0.5">{{ $t('auth.login.subtitle') }}</p>
       </div>
 
       <UiInput
         v-model="email"
         type="email"
-        placeholder="Email"
+        :placeholder="$t('auth.login.emailPlaceholder')"
         :error="null"
       />
       <UiInput
         v-model="password"
         type="password"
-        placeholder="Palavra-passe"
+        :placeholder="$t('auth.login.passwordPlaceholder')"
         :error="null"
       />
 
@@ -48,14 +49,14 @@ async function handleSubmit() {
       </div>
 
       <UiButton type="submit" :loading="loading" class="w-full">
-        Entrar
+        {{ $t('auth.login.submit') }}
       </UiButton>
     </form>
 
     <p class="mt-4 text-center text-xs font-heading text-muted-foreground">
-      Ainda não tens conta?
+      {{ $t('auth.login.noAccount') }}
       <NuxtLink to="/register" class="text-primary hover:text-primary/80 transition-colors">
-        Registar
+        {{ $t('auth.login.register') }}
       </NuxtLink>
     </p>
   </UiCard>

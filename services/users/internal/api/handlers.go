@@ -96,6 +96,7 @@ type updateProfileRequest struct {
 	Bio      *string `json:"bio"`
 	Timezone *string `json:"timezone"`
 	Status   *string `json:"status"`
+	Language *string `json:"language"`
 }
 
 type userResponse struct {
@@ -106,6 +107,7 @@ type userResponse struct {
 	Bio       string `json:"bio"`
 	Timezone  string `json:"timezone"`
 	Status    string `json:"status"`
+	Language  string `json:"language"`
 	CreatedAt int64  `json:"created_at"`
 	UpdatedAt int64  `json:"updated_at"`
 }
@@ -119,6 +121,7 @@ func toResponse(r *service.UserResult) userResponse {
 		Bio:       r.Bio,
 		Timezone:  r.Timezone,
 		Status:    r.Status,
+		Language:  r.Language,
 		CreatedAt: r.CreatedAt.Unix(),
 		UpdatedAt: r.UpdatedAt.Unix(),
 	}
@@ -189,7 +192,7 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	result, err := h.svc.UpdateProfile(c.Request.Context(), userID, req.Name, req.Avatar, req.Bio, req.Timezone, req.Status)
+	result, err := h.svc.UpdateProfile(c.Request.Context(), userID, req.Name, req.Avatar, req.Bio, req.Timezone, req.Status, req.Language)
 	if err != nil {
 		c.JSON(serviceErrorStatus(err), gin.H{"error": err.Error()})
 		return
@@ -246,6 +249,8 @@ func serviceErrorStatus(err error) int {
 		return http.StatusNotFound
 	case errors.Is(err, service.ErrUserAlreadyExists):
 		return http.StatusConflict
+	case errors.Is(err, service.ErrInvalidLanguage):
+		return http.StatusBadRequest
 	default:
 		return http.StatusInternalServerError
 	}

@@ -78,7 +78,7 @@ func (h *UsersHandler) UpdateProfile(ctx context.Context, req *pb.UpdateProfileR
 		return nil, status.Errorf(codes.InvalidArgument, "invalid id: %v", err)
 	}
 
-	result, err := h.svc.UpdateProfile(ctx, id, req.Name, req.Avatar, req.Bio, req.Timezone, req.Status)
+	result, err := h.svc.UpdateProfile(ctx, id, req.Name, req.Avatar, req.Bio, req.Timezone, req.Status, req.Language)
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -125,6 +125,7 @@ func toProto(r *service.UserResult) *pb.UserProfile {
 		Bio:       r.Bio,
 		Timezone:  r.Timezone,
 		Status:    r.Status,
+		Language:  r.Language,
 		CreatedAt: r.CreatedAt.Unix(),
 		UpdatedAt: r.UpdatedAt.Unix(),
 	}
@@ -136,6 +137,8 @@ func toGRPCError(err error) error {
 		return status.Errorf(codes.NotFound, "%v", err)
 	case errors.Is(err, service.ErrUserAlreadyExists):
 		return status.Errorf(codes.AlreadyExists, "%v", err)
+	case errors.Is(err, service.ErrInvalidLanguage):
+		return status.Errorf(codes.InvalidArgument, "%v", err)
 	default:
 		return status.Errorf(codes.Internal, "internal error")
 	}

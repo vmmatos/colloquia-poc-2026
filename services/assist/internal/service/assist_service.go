@@ -5,31 +5,55 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
+	"time"
 
 	"assist/internal/messagingclient"
 	"assist/internal/provider"
 )
 
 const (
-	defaultMessageLimit = 10
-	maxMessageLimit     = 10
+	defaultMessageLimit  = 5
+	maxMessageLimit      = 5
+	maxContextLineLength = 200
 
-	systemPrompt = `You are a helpful chat assistant. Given the recent conversation history and the user's partial message, suggest exactly 3 natural and concise message completions in the same language as the conversation.
-You may include emojis in suggestions when they feel natural and match the tone of the conversation.
-Return ONLY a valid JSON array of 3 strings, like: ["completion 1", "completion 2", "completion 3"].
-No explanation, no markdown, no extra text.`
+	systemPrompt = `Suggest 3 short message completions in the same language as the conversation. You may include emojis when natural.
+Output ONLY a JSON array of 3 strings: ["completion 1", "completion 2", "completion 3"]. No explanation, no markdown.`
 )
+
+type cacheEntry struct {
+	suggestions []string
+	expiresAt   time.Time
+}
 
 type AssistService struct {
 	msgClient messagingclient.MessageFetcher
 	provider  provider.LLMProvider
+	cache     sync.Map // key: string → *cacheEntry
+	cacheTTL  time.Duration
 }
 
 func NewAssistService(msgClient messagingclient.MessageFetcher, p provider.LLMProvider) *AssistService {
-	return &AssistService{msgClient: msgClient, provider: p}
+	return &AssistService{
+		msgClient: msgClient,
+		provider:  p,
+		cacheTTL:  30 * time.Second,
+	}
 }
 
 func (s *AssistService) GetSuggestions(ctx context.Context, channelID, currentInput string, messageLimit int32) ([]string, error) {
+	// Cache key: normalize input so mid-word typing hits the cache more often.
+	cacheKey := channelID + "|" + strings.ToLower(strings.TrimSpace(currentInput))
+
+	// Lazy TTL check on read — no background goroutine needed.
+	if v, ok := s.cache.Load(cacheKey); ok {
+		entry := v.(*cacheEntry)
+		if time.Now().Before(entry.expiresAt) {
+			return entry.suggestions, nil
+		}
+		s.cache.Delete(cacheKey) // expired
+	}
+
 	// 1. Fetch recent messages for context (best-effort).
 	var contextLines []string
 	if s.msgClient != nil {
@@ -42,7 +66,11 @@ func (s *AssistService) GetSuggestions(ctx context.Context, channelID, currentIn
 			log.Printf("assist: warning: could not fetch messages for context: %v", err)
 		} else {
 			for _, m := range msgs {
-				contextLines = append(contextLines, fmt.Sprintf("%s: %s", m.GetUserId(), m.GetContent()))
+				line := fmt.Sprintf("%s: %s", m.GetUserId(), m.GetContent())
+				if len(line) > maxContextLineLength {
+					line = line[:maxContextLineLength]
+				}
+				contextLines = append(contextLines, line)
 			}
 		}
 	}
@@ -58,6 +86,12 @@ func (s *AssistService) GetSuggestions(ctx context.Context, channelID, currentIn
 	if err != nil {
 		return nil, fmt.Errorf("assist: provider: %w", err)
 	}
+
+	// Store in cache.
+	s.cache.Store(cacheKey, &cacheEntry{
+		suggestions: suggestions,
+		expiresAt:   time.Now().Add(s.cacheTTL),
+	})
 
 	return suggestions, nil
 }

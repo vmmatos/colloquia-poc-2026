@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Toast } from '~/components/MessageToast.vue'
 import type { SseEvent } from '~/composables/useSSE'
+import { useMessageStore, messageToDisplay } from '~/composables/useMessageStore'
 
 const { auth, logout, getProfile } = useAuth()
 useTokenRefresh()
@@ -36,22 +37,23 @@ const activeChannelId = computed(() => {
   return typeof id === 'string' ? id : null
 })
 
-const activeChannelHandler = ref<((e: SseEvent) => void) | null>(null)
-provide('registerChannelHandler', (fn: ((e: SseEvent) => void) | null) => {
-  activeChannelHandler.value = fn
-})
+const msgStore = useMessageStore()
 
 function onSseMessage(event: SseEvent) {
-  const isViewing = event.channel_id === activeChannelId.value
+  // Always write to the shared store so the channel body is always up-to-date,
+  // regardless of whether the page component is currently mounted or in mid-lifecycle.
+  msgStore.append(event.channel_id, messageToDisplay(
+    { id: event.id, channel_id: event.channel_id, user_id: event.user_id, content: event.content, created_at: event.created_at },
+    resolveUser,
+  ))
 
-  if (isViewing && activeChannelHandler.value) {
-    activeChannelHandler.value(event)
-    return
-  }
+  // Active channel: user is already viewing — no toast, no counter.
+  if (event.channel_id === activeChannelId.value) return
 
+  // Own message in a background channel: still no toast.
   if (event.user_id === auth.value?.user_id) return
 
-  // Canal em background → contagem de não lidos + notificação + toast
+  // Background channel → unread counter + notification + toast.
   unreadCounts[event.channel_id] = (unreadCounts[event.channel_id] ?? 0) + 1
   const ch = channels.value.find(c => c.id === event.channel_id)
   const channelLabel = dmChannelLabel(ch?.id ?? '', ch?.type ?? 'channel', ch?.name ?? event.channel_id)

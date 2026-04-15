@@ -1,5 +1,5 @@
 export function useAssist() {
-  const { auth } = useAuth()
+  const { authFetch } = useAuthFetch()
 
   const suggestions = ref<string[]>([])
   const isLoading = ref(false)
@@ -40,22 +40,25 @@ export function useAssist() {
       }
       abortController = new AbortController()
 
+      // Timeout: abort after 10s so we never block the UI waiting for a slow backend.
+      const timeoutId = setTimeout(() => abortController?.abort(), 10_000)
+
       isLoading.value = true
       try {
-        const data = await $fetch<{ suggestions: string[] }>('/api/assist/suggestions', {
+        const data = await authFetch<{ suggestions: string[] }>('/api/assist/suggestions', {
           method: 'POST',
           body: { channel_id: channelId, current_input: inputText, message_limit: 10 },
-          headers: { Authorization: `Bearer ${auth.value.access_token}` },
           signal: abortController.signal,
         })
         suggestions.value = (data.suggestions ?? []).slice(0, 3)
       }
       catch (e: unknown) {
-        // Ignore aborted requests — a newer fetch is already in-flight
+        // Ignore aborted requests — a newer fetch is already in-flight or timed out
         if (e instanceof Error && e.name === 'AbortError') return
         suggestions.value = []
       }
       finally {
+        clearTimeout(timeoutId)
         isLoading.value = false
         abortController = null
       }

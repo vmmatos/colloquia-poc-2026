@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { Channel, ChannelMember } from '../../../shared/types/channels'
-import type { Message } from '~/composables/useMessaging'
-import type { SseEvent } from '~/composables/useSSE'
+import { useMessageStore, messageToDisplay, type DisplayMessage } from '~/composables/useMessageStore'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -13,7 +12,7 @@ const { getPeer } = useDMPeers()
 const { isOnline } = usePresence()
 const { suggestions, isLoading: isSuggestionsLoading, debouncedFetch, clearSuggestions } = useAssist()
 const openSidebar = inject<() => void>('openSidebar')
-const registerChannelHandler = inject<(fn: ((e: SseEvent) => void) | null) => void>('registerChannelHandler')
+const msgStore = useMessageStore()
 const route = useRoute()
 
 const channelId = computed(() => route.params.id as string)
@@ -26,16 +25,7 @@ const showNewGroup = ref(false)
 const loadError = ref('')
 const isSending = ref(false)
 
-interface DisplayMessage {
-  id: string
-  userId: string
-  author: string
-  text: string
-  time: string
-  isAgent?: boolean
-}
-
-const messages = ref<DisplayMessage[]>([])
+const messages = computed<DisplayMessage[]>(() => msgStore.get(channelId.value))
 const input = ref('')
 const isAgentMode = computed(() => input.value.startsWith('@llm'))
 const messagesEl = ref<HTMLElement | null>(null)
@@ -75,19 +65,6 @@ function scrollToBottom() {
 
 watch(() => messages.value.length, scrollToBottom, { flush: 'post' })
 
-function formatTime(unixSeconds: number): string {
-  return new Date(unixSeconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-}
-
-function toDisplay(m: Message): DisplayMessage {
-  return {
-    id: m.id,
-    userId: m.user_id,
-    author: resolveUser(m.user_id),
-    text: m.content,
-    time: formatTime(m.created_at),
-  }
-}
 
 // ── Load channel ───────────────────────────────────────────────────────────────
 
@@ -96,7 +73,7 @@ async function loadChannel() {
   channel.value = null
   myRole.value = ''
   memberIds.value = []
-  messages.value = []
+  msgStore.clearChannel(channelId.value)
 
   try {
     const [ch, memberList, history] = await Promise.all([
@@ -110,7 +87,8 @@ async function loadChannel() {
     myRole.value = me?.role ?? ''
     memberIds.value = members.map(m => m.user_id)
     await prefetchUsers(memberIds.value)
-    messages.value = history.map(toDisplay)
+    // setHistory merges history with any live SSE events that arrived during the fetch.
+    msgStore.setHistory(channelId.value, history.map(m => messageToDisplay(m, resolveUser)))
   } catch {
     loadError.value = 'Canal não encontrado ou sem acesso.'
   }
@@ -120,24 +98,17 @@ onMounted(() => {
   import('emoji-picker-element')
   loadChannel()
   window.visualViewport?.addEventListener('resize', scrollToBottom)
-  registerChannelHandler?.((event) => {
-    if (messages.value.some(m => m.id === event.id)) return // dedup com optimistic
-    messages.value.push({
-      id: event.id,
-      userId: event.user_id,
-      author: resolveUser(event.user_id),
-      text: event.content,
-      time: formatTime(event.created_at),
-    })
-  })
 })
 
 onUnmounted(() => {
-  registerChannelHandler?.(null)
+  msgStore.clearChannel(channelId.value)
   window.visualViewport?.removeEventListener('resize', scrollToBottom)
 })
 
-watch(channelId, loadChannel)
+watch(channelId, (newId, oldId) => {
+  if (oldId) msgStore.clearChannel(oldId)
+  loadChannel()
+})
 watch(input, val => debouncedFetch(channelId.value, val))
 watch(() => suggestions.value.length, (newLen, oldLen) => {
   if (newLen > 0 && oldLen === 0) scrollToBottom()
@@ -151,16 +122,17 @@ async function sendMessage() {
 
   // Mock do agente LLM mantém-se local
   if (text.startsWith('@llm')) {
-    messages.value.push({
+    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    msgStore.append(channelId.value, {
       id: `local-${Date.now()}`,
       userId: auth.value.user_id || 'me',
       author: 'Tu',
       text,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: now,
     })
     input.value = ''
     setTimeout(() => {
-      messages.value.push({
+      msgStore.append(channelId.value, {
         id: `local-${Date.now() + 1}`,
         userId: 'llm',
         author: 'LLM',
@@ -177,9 +149,7 @@ async function sendMessage() {
     const sent = await apiSendMessage(channelId.value, text)
     input.value = ''
     clearSuggestions()
-    if (!messages.value.some(m => m.id === sent.id)) {
-      messages.value.push(toDisplay(sent))
-    }
+    msgStore.append(channelId.value, messageToDisplay(sent, resolveUser))
   } catch {
     // Falha silenciosa no POC — input não é limpo
   } finally {

@@ -227,6 +227,10 @@ services:
     image: ollama/ollama:latest
     container_name: colloquia-ollama
     restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: "-1"
+      OLLAMA_NUM_PARALLEL: "2"
+      OLLAMA_MAX_LOADED_MODELS: "1"
     ports:
       - "11434:11434"
     volumes:
@@ -238,13 +242,15 @@ services:
       retries: 10
       start_period: 30s
 
-  ## Ollama Init — pulls the model once on first run (one-shot)
+  ## Ollama Init — pulls the model once on first run, then warms it up (one-shot)
   ollama-init:
     image: ollama/ollama:latest
     container_name: colloquia-ollama-init
     environment:
       OLLAMA_HOST: "http://ollama:11434"
-    command: ["pull", "llama3.2:3b"]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "ollama pull qwen2.5:0.5b && ollama run qwen2.5:0.5b 'hi'"
     volumes:
       - ollama-data:/root/.ollama
     depends_on:
@@ -265,7 +271,7 @@ services:
     environment:
       ASSIST_MESSAGING_GRPC_ADDRESS: messaging-service:50054
       ASSIST_OLLAMA_BASE_URL: http://ollama:11434
-      ASSIST_OLLAMA_TIMEOUT_SECONDS: "120"
+      ASSIST_OLLAMA_TIMEOUT_SECONDS: "60"
     ports:
       - "50055:50055"
       - "8085:8085"

@@ -7,11 +7,7 @@ export interface Message {
 }
 
 export function useMessaging() {
-  const { auth } = useAuth()
-
-  function authHeaders() {
-    return { Authorization: `Bearer ${auth.value.access_token}` }
-  }
+  const { authFetch } = useAuthFetch()
 
   async function fetchMessages(
     channelId: string,
@@ -23,19 +19,14 @@ export function useMessaging() {
     }
     if (opts.beforeId) query.before_id = opts.beforeId
 
-    const result = await $fetch<Message[]>('/api/messages', {
-      query,
-      headers: authHeaders(),
-    })
-    // Backend retorna DESC (mais recente primeiro); reverter para exibir cronologicamente
+    const result = await authFetch<Message[]>('/api/messages', { query })
     return result.reverse()
   }
 
   async function sendMessage(channelId: string, content: string): Promise<Message> {
-    return await $fetch<Message>('/api/messages', {
+    return await authFetch<Message>('/api/messages', {
       method: 'POST',
       body: { channel_id: channelId, content },
-      headers: authHeaders(),
     })
   }
 

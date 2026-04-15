@@ -12,6 +12,8 @@ const { resolveUser, prefetchUsers } = useUsersCache()
 const { getPeer, setPeer } = useDMPeers()
 const { isOnline, init: initPresence, destroy: destroyPresence } = usePresence()
 
+const { t } = useI18n()
+
 const displayName = ref('')
 const showProfile = ref(false)
 const sidebarOpen = ref(false)
@@ -59,9 +61,9 @@ function onSseMessage(event: SseEvent) {
   const channelLabel = dmChannelLabel(ch?.id ?? '', ch?.type ?? 'channel', ch?.name ?? event.channel_id)
   addNotification({
     type: 'message',
-    title: `Nova mensagem em ${channelLabel}`,
+    title: t('notifications.newMessage', { channel: channelLabel }),
     body: event.content.slice(0, 80),
-    time: 'agora',
+    time: t('notifications.now', 'now'),
     channelId: event.channel_id,
   })
 
@@ -105,7 +107,7 @@ function dmChannelLabel(channelId: string, type: string, name: string): string {
     const peerId = getPeer(channelId)
     return peerId ? resolveUser(peerId) : '...'
   }
-  if (type === 'group') return name || 'Grupo'
+  if (type === 'group') return name || t('sidebar.groupFallback')
   return `#${name}`
 }
 
@@ -227,11 +229,11 @@ function dismissToast(id: number) {
                 >
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
-                <span>Canais</span>
+                <span>{{ $t('sidebar.channels') }}</span>
               </button>
               <button
                 class="text-muted-foreground hover:text-foreground transition-colors ml-1 flex-shrink-0"
-                title="Criar canal"
+                :title="$t('sidebar.createChannel')"
                 @click.stop="showCreateChannel = true"
               >
                 <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -265,7 +267,7 @@ function dismissToast(id: number) {
                 </NuxtLink>
                 <button
                   class="absolute right-0 inset-y-0 flex items-center px-2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
-                  title="Gerir canal"
+                  :title="$t('sidebar.manageChannel')"
                   @click="managingChannelId = ch.id"
                 >
                   <svg class="h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -281,7 +283,7 @@ function dismissToast(id: number) {
                   @click="showCreateChannel = true"
                 >
                   <span class="text-muted-foreground/40">#</span>
-                  <span class="italic">Criar primeiro canal...</span>
+                  <span class="italic">{{ $t('sidebar.createFirstChannel') }}</span>
                 </button>
               </li>
             </ul>
@@ -300,11 +302,11 @@ function dismissToast(id: number) {
                 >
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
-                <span>Mensagens directas</span>
+                <span>{{ $t('sidebar.dms') }}</span>
               </button>
               <button
                 class="text-muted-foreground hover:text-foreground transition-colors ml-1 flex-shrink-0"
-                title="Nova mensagem directa"
+                :title="$t('sidebar.newDM')"
                 @click.stop="showNewDM = true"
               >
                 <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -347,7 +349,7 @@ function dismissToast(id: number) {
                     <svg class="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    <span class="flex-1 truncate">{{ ch.name || 'Grupo' }}</span>
+                    <span class="flex-1 truncate">{{ ch.name || $t('sidebar.groupFallback') }}</span>
                   </template>
 
                   <span
@@ -364,7 +366,7 @@ function dismissToast(id: number) {
                   class="flex items-center gap-2 w-full px-4 py-1.5 text-sm font-heading text-muted-foreground/60 hover:text-muted-foreground transition-colors"
                   @click="showNewDM = true"
                 >
-                  <span class="italic">Nova mensagem directa...</span>
+                  <span class="italic">{{ $t('sidebar.newDMPlaceholder') }}</span>
                 </button>
               </li>
             </ul>
@@ -379,7 +381,7 @@ function dismissToast(id: number) {
           >
             <UiAvatar :name="displayName || auth.user_id || 'U'" size="sm" />
             <span class="flex-1 text-sm font-heading text-muted-foreground group-hover:text-foreground truncate text-left">
-              {{ displayName || 'Perfil' }}
+              {{ displayName || $t('common.profile') }}
             </span>
             <svg class="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -394,7 +396,7 @@ function dismissToast(id: number) {
             <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            Sair
+            {{ $t('auth.logout') }}
           </button>
         </div>
       </aside>

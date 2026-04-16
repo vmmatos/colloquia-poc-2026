@@ -25,7 +25,12 @@ async function handleSubmit() {
     await register(email.value, password.value)
     await navigateTo('/')
   } catch (e: any) {
-    error.value = e?.data?.message || e?.message || t('auth.register.error')
+    const status = e?.status ?? e?.response?.status
+    if (status === 409) {
+      error.value = t('auth.register.emailTaken')
+    } else {
+      error.value = t('auth.register.error')
+    }
   } finally {
     loading.value = false
   }

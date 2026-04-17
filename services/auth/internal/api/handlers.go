@@ -24,13 +24,13 @@ func bearerToken(c *gin.Context) (string, bool) {
 // ── Request / response types ──────────────────────────────────────────────────
 
 type registerRequest struct {
-	Email    string `json:"email"    binding:"required,email"`
-	Password string `json:"password" binding:"required,min=8"`
+	Email    string `json:"email"    binding:"required,email,max=254"`
+	Password string `json:"password" binding:"required,min=8,max=128"`
 }
 
 type loginRequest struct {
-	Email    string `json:"email"    binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+	Email    string `json:"email"    binding:"required,email,max=254"`
+	Password string `json:"password" binding:"required,max=128"`
 }
 
 type refreshRequest struct {

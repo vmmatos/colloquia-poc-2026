@@ -20,6 +20,10 @@ func NewServer(svc *service.AssistService, cfg *config.Config) *Server {
 
 	router := gin.New()
 	router.Use(gin.Recovery(), gin.Logger())
+	router.Use(func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20) // 1 MB
+		c.Next()
+	})
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost"},
 		AllowMethods:     []string{"POST", "OPTIONS"},

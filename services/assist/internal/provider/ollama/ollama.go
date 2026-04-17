@@ -78,7 +78,7 @@ func (p *Provider) Complete(ctx context.Context, req provider.CompletionRequest)
 		KeepAlive: -1,
 		Format:    "json",
 		Options: generateOptions{
-			NumPredict:    120,
+			NumPredict:    256,
 			NumCtx:        1024,
 			Temperature:   0.6,
 			TopK:          20,

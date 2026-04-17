@@ -73,11 +73,11 @@ func bearerToken(c *gin.Context) (string, bool) {
 // ── Request / response types ──────────────────────────────────────────────────
 
 type createChannelRequest struct {
-	Name        string   `json:"name"               binding:"required"`
-	Description string   `json:"description"`
+	Name        string   `json:"name"               binding:"required,max=80"`
+	Description string   `json:"description"        binding:"omitempty,max=500"`
 	IsPrivate   bool     `json:"is_private"`
 	MemberIDs   []string `json:"initial_member_ids"`
-	Type        string   `json:"type"`
+	Type        string   `json:"type"               binding:"omitempty,max=10"`
 }
 
 type createDMRequest struct {
@@ -276,12 +276,7 @@ func (h *Handler) AddMember(c *gin.Context) {
 		return
 	}
 
-	role := req.Role
-	if role == "" {
-		role = "member"
-	}
-
-	member, err := h.svc.AddMember(c.Request.Context(), channelID, targetUserID, role, userID)
+	member, err := h.svc.AddMember(c.Request.Context(), channelID, targetUserID, req.Role, userID)
 	if err != nil {
 		c.JSON(serviceErrorStatus(err), gin.H{"error": err.Error()})
 		return
@@ -347,6 +342,8 @@ func serviceErrorStatus(err error) int {
 		return http.StatusForbidden
 	case errors.Is(err, service.ErrChannelArchived):
 		return http.StatusUnprocessableEntity
+	case errors.Is(err, service.ErrInvalidRole):
+		return http.StatusBadRequest
 	default:
 		return http.StatusInternalServerError
 	}

@@ -258,6 +258,8 @@ func toGRPCError(err error) error {
 		return status.Errorf(codes.NotFound, "%v", err)
 	case errors.Is(err, service.ErrCannotModifyDM):
 		return status.Errorf(codes.PermissionDenied, "%v", err)
+	case errors.Is(err, service.ErrInvalidRole):
+		return status.Errorf(codes.InvalidArgument, "%v", err)
 	default:
 		return status.Errorf(codes.Internal, "internal error")
 	}

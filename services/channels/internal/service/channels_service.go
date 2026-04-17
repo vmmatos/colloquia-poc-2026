@@ -22,7 +22,10 @@ var (
 	ErrChannelArchived      = errors.New("channel is archived")
 	ErrUserNotFound         = errors.New("user not found")
 	ErrCannotModifyDM       = errors.New("cannot add or remove members from a DM channel")
+	ErrInvalidRole          = errors.New("invalid role: must be member, admin, or owner")
 )
+
+var allowedRoles = map[string]bool{"member": true, "admin": true, "owner": true}
 
 type ChannelsService struct {
 	repo    repository.IChannelsRepository
@@ -140,6 +143,13 @@ func (s *ChannelsService) DeleteChannel(ctx context.Context, channelID, requesti
 }
 
 func (s *ChannelsService) AddMember(ctx context.Context, channelID, userID uuid.UUID, role string, requestingUserID uuid.UUID) (*repository.MemberRow, error) {
+	if role == "" {
+		role = "member"
+	}
+	if !allowedRoles[role] {
+		return nil, ErrInvalidRole
+	}
+
 	ch, err := s.repo.GetChannel(ctx, channelID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

@@ -6,6 +6,7 @@ import (
 	"auth/internal/usersclient"
 	"context"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -57,13 +58,31 @@ type ValidateResult struct {
 // ── Service ───────────────────────────────────────────────────────────────────
 
 type AuthService struct {
-	repo        repository.IAuthRepository
-	cfg         *config.Config
+	repo       repository.IAuthRepository
+	cfg        *config.Config
 	userCreator usersclient.UserCreator // nil-safe: skip if nil
+	privateKey *rsa.PrivateKey
+	publicKey  *rsa.PublicKey
 }
 
-func NewAuthService(repo repository.IAuthRepository, cfg *config.Config, userCreator usersclient.UserCreator) *AuthService {
-	return &AuthService{repo: repo, cfg: cfg, userCreator: userCreator}
+func NewAuthService(repo repository.IAuthRepository, cfg *config.Config, userCreator usersclient.UserCreator) (*AuthService, error) {
+	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(cfg.JwtPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("parse private key: %w", err)
+	}
+
+	publicKey, err := jwt.ParseRSAPublicKeyFromPEM(cfg.JwtPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("parse public key: %w", err)
+	}
+
+	return &AuthService{
+		repo:        repo,
+		cfg:         cfg,
+		userCreator: userCreator,
+		privateKey:  privateKey,
+		publicKey:   publicKey,
+	}, nil
 }
 
 // Register creates a new user and returns a session with tokens.
@@ -235,58 +254,46 @@ func (s *AuthService) handleFailedLogin(ctx context.Context, userID uuid.UUID) e
 	return nil
 }
 
+type accessTokenClaims struct {
+	Email string `json:"email"`
+	jwt.RegisteredClaims
+}
+
 // generateAccessToken creates a signed RS256 JWT.
 func (s *AuthService) generateAccessToken(userID uuid.UUID, sessionID uuid.UUID, email string) (string, error) {
-	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(s.cfg.JwtPrivateKey)
-	if err != nil {
-		return "", fmt.Errorf("parse private key: %w", err)
-	}
-
 	now := time.Now()
-	claims := jwt.MapClaims{
-		"sub":   userID.String(),
-		"jti":   sessionID.String(),
-		"email": email,
-		"iat":   now.Unix(),
-		"exp":   now.Add(accessTokenDuration).Unix(),
+	claims := accessTokenClaims{
+		Email: email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID.String(),
+			ID:        sessionID.String(),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(accessTokenDuration)),
+		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	token.Header["kid"] = "colloquia-auth-key-1"
-	return token.SignedString(privateKey)
-}
-
-type accessTokenClaims struct {
-	jwt.RegisteredClaims
-	MapClaims jwt.MapClaims
+	return token.SignedString(s.privateKey)
 }
 
 func (s *AuthService) parseAccessToken(tokenStr string) (*accessTokenClaims, error) {
-	publicKey, err := jwt.ParseRSAPublicKeyFromPEM(s.cfg.JwtPublicKey)
-	if err != nil {
-		return nil, fmt.Errorf("parse public key: %w", err)
-	}
-
-	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
+	claims := &accessTokenClaims{}
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
-		return publicKey, nil
+		return s.publicKey, nil
 	}, jwt.WithExpirationRequired())
 	if err != nil {
 		return nil, err
 	}
 
-	mc, ok := token.Claims.(jwt.MapClaims)
-	if !ok || !token.Valid {
+	if !token.Valid {
 		return nil, errors.New("invalid claims")
 	}
 
-	sub, _ := mc.GetSubject()
-	return &accessTokenClaims{
-		RegisteredClaims: jwt.RegisteredClaims{Subject: sub},
-		MapClaims:        mc,
-	}, nil
+	return claims, nil
 }
 
 // generateOpaqueToken returns a cryptographically random URL-safe token.

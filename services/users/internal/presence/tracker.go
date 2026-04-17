@@ -109,6 +109,6 @@ func (t *Tracker) reap(ctx context.Context) {
 			Online:   false,
 			LastSeen: now.Unix(),
 		})
-		log.Printf("presence: %s went offline (no heartbeat for >90s)", id)
+		log.Printf("presence: %s went offline (no heartbeat for >%s)", id, HeartbeatTimeout)
 	}
 }

@@ -87,16 +87,16 @@ func bearerToken(c *gin.Context) (string, bool) {
 
 type createUserRequest struct {
 	ID    string `json:"id"    binding:"required"`
-	Email string `json:"email" binding:"required,email"`
+	Email string `json:"email" binding:"required,email,max=254"`
 }
 
 type updateProfileRequest struct {
-	Name     *string `json:"name"`
-	Avatar   *string `json:"avatar"`
-	Bio      *string `json:"bio"`
-	Timezone *string `json:"timezone"`
-	Status   *string `json:"status"`
-	Language *string `json:"language"`
+	Name     *string `json:"name"     binding:"omitempty,max=100"`
+	Avatar   *string `json:"avatar"   binding:"omitempty,max=2048"`
+	Bio      *string `json:"bio"      binding:"omitempty,max=500"`
+	Timezone *string `json:"timezone" binding:"omitempty,max=64"`
+	Status   *string `json:"status"   binding:"omitempty,max=50"`
+	Language *string `json:"language" binding:"omitempty,max=10"`
 }
 
 type userResponse struct {
@@ -223,6 +223,10 @@ func (h *Handler) SearchUsers(c *gin.Context) {
 	q := c.Query("q")
 	if q == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing q parameter"})
+		return
+	}
+	if len(q) > 100 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "search query too long"})
 		return
 	}
 

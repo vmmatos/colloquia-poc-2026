@@ -23,6 +23,10 @@ func NewServer(authService *service.AuthService, cfg *config.Config) *Server {
 
 	router := gin.New()
 	router.Use(gin.Recovery(), gin.Logger())
+	router.Use(func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20) // 1 MB
+		c.Next()
+	})
 
 	// Parse RSA public key — required for the JWKS endpoint consumed by the
 	// API gateway. Fail fast so misconfiguration is caught at startup.

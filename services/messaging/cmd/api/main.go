@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/sync/errgroup"
 )
@@ -30,7 +31,13 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	poolCfg, err := pgxpool.ParseConfig(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("database: parse config: %v", err)
+	}
+	poolCfg.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeCacheStatement
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
 		log.Fatalf("database: connect: %v", err)
 	}

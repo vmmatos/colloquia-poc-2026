@@ -84,7 +84,7 @@ func bearerToken(c *gin.Context) (string, bool) {
 
 type sendMessageRequest struct {
 	ChannelID string `json:"channel_id" binding:"required"`
-	Content   string `json:"content"    binding:"required"`
+	Content   string `json:"content"    binding:"required,max=4000"`
 }
 
 type messageResponse struct {

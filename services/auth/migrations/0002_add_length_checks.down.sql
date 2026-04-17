@@ -1,0 +1,3 @@
+ALTER TABLE users
+  DROP CONSTRAINT IF EXISTS chk_email_len,
+  DROP CONSTRAINT IF EXISTS chk_password_len;

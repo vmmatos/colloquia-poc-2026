@@ -75,8 +75,8 @@ func bearerToken(c *gin.Context) (string, bool) {
 
 type suggestionsRequest struct {
 	ChannelID    string `json:"channel_id"    binding:"required"`
-	CurrentInput string `json:"current_input" binding:"required"`
-	MessageLimit int32  `json:"message_limit"`
+	CurrentInput string `json:"current_input" binding:"required,max=500"`
+	MessageLimit int32  `json:"message_limit" binding:"omitempty,min=0,max=50"`
 }
 
 type suggestionsResponse struct {

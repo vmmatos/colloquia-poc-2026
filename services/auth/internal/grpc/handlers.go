@@ -10,10 +10,19 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// AuthServicer defines the auth service interface for handlers.
+type AuthServicer interface {
+	Register(ctx context.Context, email, password string) (*service.AuthResult, error)
+	Login(ctx context.Context, email, password string) (*service.AuthResult, error)
+	Logout(ctx context.Context, accessToken string) error
+	RefreshToken(ctx context.Context, refreshToken string) (*service.AuthResult, error)
+	ValidateToken(ctx context.Context, accessToken string) (*service.ValidateResult, error)
+}
+
 // AuthHandler implements pb.AuthServiceServer.
 type AuthHandler struct {
 	pb.UnimplementedAuthServiceServer
-	authService *service.AuthService
+	authService AuthServicer
 }
 
 func NewAuthHandler(authService *service.AuthService) *AuthHandler {
@@ -30,12 +39,7 @@ func (h *AuthHandler) Register(ctx context.Context, req *pb.RegisterRequest) (*p
 		return nil, toGRPCError(err)
 	}
 
-	return &pb.AuthResponse{
-		UserId:       result.UserID.String(),
-		AccessToken:  result.AccessToken,
-		RefreshToken: result.RefreshToken,
-		ExpiresAt:    result.ExpiresAt.Unix(),
-	}, nil
+	return toAuthPbResponse(result), nil
 }
 
 func (h *AuthHandler) Login(ctx context.Context, req *pb.LoginRequest) (*pb.AuthResponse, error) {
@@ -48,12 +52,7 @@ func (h *AuthHandler) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Auth
 		return nil, toGRPCError(err)
 	}
 
-	return &pb.AuthResponse{
-		UserId:       result.UserID.String(),
-		AccessToken:  result.AccessToken,
-		RefreshToken: result.RefreshToken,
-		ExpiresAt:    result.ExpiresAt.Unix(),
-	}, nil
+	return toAuthPbResponse(result), nil
 }
 
 func (h *AuthHandler) Logout(ctx context.Context, req *pb.LogoutRequest) (*pb.LogoutResponse, error) {
@@ -78,12 +77,7 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, req *pb.RefreshTokenRequ
 		return nil, toGRPCError(err)
 	}
 
-	return &pb.AuthResponse{
-		UserId:       result.UserID.String(),
-		AccessToken:  result.AccessToken,
-		RefreshToken: result.RefreshToken,
-		ExpiresAt:    result.ExpiresAt.Unix(),
-	}, nil
+	return toAuthPbResponse(result), nil
 }
 
 func (h *AuthHandler) ValidateToken(ctx context.Context, req *pb.ValidateTokenRequest) (*pb.ValidateTokenResponse, error) {
@@ -101,6 +95,15 @@ func (h *AuthHandler) ValidateToken(ctx context.Context, req *pb.ValidateTokenRe
 		UserId: result.UserID.String(),
 		Email:  result.Email,
 	}, nil
+}
+
+func toAuthPbResponse(r *service.AuthResult) *pb.AuthResponse {
+	return &pb.AuthResponse{
+		UserId:       r.UserID.String(),
+		AccessToken:  r.AccessToken,
+		RefreshToken: r.RefreshToken,
+		ExpiresAt:    r.ExpiresAt.Unix(),
+	}
 }
 
 // toGRPCError maps domain errors to gRPC status codes.

@@ -69,11 +69,7 @@ func (s *UsersService) BatchGetUsers(ctx context.Context, ids []uuid.UUID) ([]*U
 	if err != nil {
 		return nil, fmt.Errorf("batch get user profiles: %w", err)
 	}
-	results := make([]*UserResult, len(profiles))
-	for i, p := range profiles {
-		results[i] = toResult(p)
-	}
-	return results, nil
+	return mapSlice(profiles, func(p sqlc.UserProfile) *UserResult { return toResult(p) }), nil
 }
 
 // UpdateProfile applies partial updates: only non-nil fields override the current value.
@@ -129,11 +125,7 @@ func (s *UsersService) ListUsers(ctx context.Context, limit, offset int32) ([]*U
 	if err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
 	}
-	results := make([]*UserResult, len(profiles))
-	for i, p := range profiles {
-		results[i] = toResult(p)
-	}
-	return results, nil
+	return mapSlice(profiles, func(p sqlc.UserProfile) *UserResult { return toResult(p) }), nil
 }
 
 func (s *UsersService) SearchUsers(ctx context.Context, query string, limit, offset int32) ([]*UserResult, error) {
@@ -141,14 +133,18 @@ func (s *UsersService) SearchUsers(ctx context.Context, query string, limit, off
 	if err != nil {
 		return nil, fmt.Errorf("search users: %w", err)
 	}
-	results := make([]*UserResult, len(profiles))
-	for i, p := range profiles {
-		results[i] = toResult(p)
-	}
-	return results, nil
+	return mapSlice(profiles, func(p sqlc.UserProfile) *UserResult { return toResult(p) }), nil
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+func mapSlice[A, B any](in []A, fn func(A) B) []B {
+	out := make([]B, len(in))
+	for i, a := range in {
+		out[i] = fn(a)
+	}
+	return out
+}
 
 func clampLimit(l int32) int32 {
 	if l <= 0 {

@@ -21,9 +21,9 @@ func NewUsersHandler(svc *service.UsersService) *UsersHandler {
 }
 
 func (h *UsersHandler) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb.UserResponse, error) {
-	id, err := uuid.Parse(req.GetId())
+	id, err := parseID(req.GetId())
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid id: %v", err)
+		return nil, err
 	}
 
 	result, err := h.svc.CreateUser(ctx, id, req.GetEmail())
@@ -35,9 +35,9 @@ func (h *UsersHandler) CreateUser(ctx context.Context, req *pb.CreateUserRequest
 }
 
 func (h *UsersHandler) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.UserResponse, error) {
-	id, err := uuid.Parse(req.GetId())
+	id, err := parseID(req.GetId())
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid id: %v", err)
+		return nil, err
 	}
 
 	result, err := h.svc.GetUser(ctx, id)
@@ -52,9 +52,9 @@ func (h *UsersHandler) BatchGetUsers(ctx context.Context, req *pb.BatchGetUsersR
 	ids := make([]uuid.UUID, 0, len(req.GetIds()))
 
 	for _, s := range req.GetIds() {
-		id, err := uuid.Parse(s)
+		id, err := parseID(s)
 		if err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "invalid id %q: %v", s, err)
+			return nil, err
 		}
 		ids = append(ids, id)
 	}
@@ -73,9 +73,9 @@ func (h *UsersHandler) BatchGetUsers(ctx context.Context, req *pb.BatchGetUsersR
 }
 
 func (h *UsersHandler) UpdateProfile(ctx context.Context, req *pb.UpdateProfileRequest) (*pb.UserResponse, error) {
-	id, err := uuid.Parse(req.GetId())
+	id, err := parseID(req.GetId())
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid id: %v", err)
+		return nil, err
 	}
 
 	result, err := h.svc.UpdateProfile(ctx, id, req.Name, req.Avatar, req.Bio, req.Timezone, req.Status, req.Language)
@@ -115,6 +115,14 @@ func (h *UsersHandler) SearchUsers(ctx context.Context, req *pb.SearchUsersReque
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+func parseID(s string) (uuid.UUID, error) {
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return uuid.UUID{}, status.Errorf(codes.InvalidArgument, "invalid id: %v", err)
+	}
+	return id, nil
+}
 
 func toProto(r *service.UserResult) *pb.UserProfile {
 	return &pb.UserProfile{

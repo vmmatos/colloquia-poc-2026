@@ -59,7 +59,10 @@ func main() {
 
 	// Wire up layers.
 	authRepo := postgres.NewAuthRepository(pool)
-	authService := service.NewAuthService(authRepo, cfg, usersClient)
+	authService, err := service.NewAuthService(authRepo, cfg, usersClient)
+	if err != nil {
+		log.Fatalf("auth service: %v", err)
+	}
 
 	grpcSrv := grpcserver.NewServer(grpcserver.NewAuthHandler(authService))
 	httpSrv := api.NewServer(authService, cfg)

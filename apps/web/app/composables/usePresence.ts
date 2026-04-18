@@ -1,33 +1,30 @@
-import { reactive } from 'vue'
-
 interface PresenceEvent {
   user_id: string
   online: boolean
-  last_seen: number // Unix seconds
+  last_seen: number
 }
 
-// Module-level singleton — one SSE connection and one presenceMap shared across all component instances.
-const presenceMap = reactive<Record<string, boolean>>({})
-let source: EventSource | null = null
-let heartbeatTimer: ReturnType<typeof setInterval> | null = null
-let retryTimer: ReturnType<typeof setTimeout> | null = null
-let retryCount = 0
-
-export function usePresence() {
+export function usePresence(options?: { EventSourceCtor?: typeof EventSource }) {
   const { auth } = useAuth()
+  const presenceMap = useState<Record<string, boolean>>('presenceMap', () => ({}))
 
-  // ── SSE stream ────────────────────────────────────────────────────────────────
+  let source: EventSource | null = null
+  let heartbeatTimer: ReturnType<typeof setInterval> | null = null
+  let retryTimer: ReturnType<typeof setTimeout> | null = null
+  let retryCount = 0
+
+  const EventSourceCtor = options?.EventSourceCtor ?? (typeof EventSource !== 'undefined' ? EventSource : null)
 
   function openPresenceStream() {
-    if (source || !auth.value.access_token) return
+    if (source || !auth.value.access_token || !EventSourceCtor) return
 
     const params = new URLSearchParams({ token: auth.value.access_token })
-    source = new EventSource(`/api/v1/users/presence/stream?${params}`)
+    source = new EventSourceCtor(`/api/v1/users/presence/stream?${params}`)
 
     source.addEventListener('message', (e: MessageEvent) => {
       try {
         const evt: PresenceEvent = JSON.parse(e.data)
-        presenceMap[evt.user_id] = evt.online
+        presenceMap.value[evt.user_id] = evt.online
         retryCount = 0
       } catch {
         // Malformed event — ignore
@@ -51,8 +48,6 @@ export function usePresence() {
     source?.close()
     source = null
   }
-
-  // ── Heartbeat ─────────────────────────────────────────────────────────────────
 
   function startHeartbeat() {
     if (heartbeatTimer) return
@@ -79,10 +74,8 @@ export function usePresence() {
     }
   }
 
-  // ── Public API ────────────────────────────────────────────────────────────────
-
   function isOnline(userId: string): boolean {
-    return presenceMap[userId] ?? false
+    return presenceMap.value[userId] ?? false
   }
 
   function init() {

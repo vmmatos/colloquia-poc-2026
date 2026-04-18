@@ -8,9 +8,9 @@ export interface AppNotification {
   channelId?: string
 }
 
-const notifications = ref<AppNotification[]>([])
-
 export function useNotifications() {
+  const notifications = useState<AppNotification[]>('notifications', () => [])
+
   const unreadCount = computed(() =>
     new Set(notifications.value.filter(n => !n.read && n.channelId).map(n => n.channelId)).size
   )

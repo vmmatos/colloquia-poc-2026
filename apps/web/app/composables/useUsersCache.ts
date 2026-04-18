@@ -4,35 +4,33 @@ interface UserApiResponse {
   email: string
 }
 
-// Module-level cache — partilhado por todas as instâncias do composable (como useNotifications)
-const cache = reactive<Record<string, string>>({}) // userId → displayName
-const pending = new Set<string>()
-
 export function useUsersCache() {
   const { auth } = useAuth()
+  const cache = useState<Record<string, string>>('usersCache', () => ({}))
+  const pending = useState<Set<string>>('usersCachePending', () => new Set())
 
   async function loadUser(userId: string): Promise<void> {
-    if (cache[userId] !== undefined || pending.has(userId)) return
-    pending.add(userId)
+    if (cache.value[userId] !== undefined || pending.value.has(userId)) return
+    pending.value.add(userId)
     try {
       const p = await $fetch<UserApiResponse>(`/api/users/${userId}`)
-      cache[userId] = p.name || p.email || userId.slice(0, 8)
+      cache.value[userId] = p.name || p.email || userId.slice(0, 8)
     } catch {
-      cache[userId] = userId.slice(0, 8)
+      cache.value[userId] = userId.slice(0, 8)
     } finally {
-      pending.delete(userId)
+      pending.value.delete(userId)
     }
   }
 
   async function prefetchUsers(userIds: string[]): Promise<void> {
-    const missing = userIds.filter(id => id !== auth.value.user_id && cache[id] === undefined)
+    const missing = userIds.filter(id => id !== auth.value.user_id && cache.value[id] === undefined)
     await Promise.all(missing.map(loadUser))
   }
 
   function resolveUser(userId: string): string {
     if (userId === auth.value.user_id) return 'Tu'
-    if (cache[userId] !== undefined) return cache[userId]
-    loadUser(userId) // background load para renderizações futuras
+    if (cache.value[userId] !== undefined) return cache.value[userId]
+    loadUser(userId)
     return userId.slice(0, 8)
   }
 

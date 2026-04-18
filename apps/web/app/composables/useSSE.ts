@@ -3,13 +3,18 @@ export interface SseEvent {
   channel_id: string
   user_id: string
   content: string
-  created_at: number // Unix timestamp (segundos)
+  created_at: number
 }
 
-export function useSSE(options: {
-  activeChannelId: Ref<string | null>
-  onMessage: (event: SseEvent) => void
-}) {
+export function useSSE(
+  options: {
+    activeChannelId: Ref<string | null>
+    onMessage: (event: SseEvent) => void
+  },
+  injectDeps?: {
+    EventSourceCtor?: typeof EventSource
+  }
+) {
   const { auth } = useAuth()
 
   let source: EventSource | null = null
@@ -17,14 +22,16 @@ export function useSSE(options: {
   let retryTimer: ReturnType<typeof setTimeout> | null = null
   let subscribedChannels: string[] = []
 
+  const EventSourceCtor = injectDeps?.EventSourceCtor ?? (typeof EventSource !== 'undefined' ? EventSource : null)
+
   function openConnection(channelIds: string[]) {
-    if (source || channelIds.length === 0 || !auth.value.access_token) return
+    if (source || channelIds.length === 0 || !auth.value.access_token || !EventSourceCtor) return
 
     const params = new URLSearchParams()
     channelIds.forEach(id => params.append('channel_id', id))
     params.set('token', auth.value.access_token)
 
-    source = new EventSource(`/api/v1/messages/stream?${params.toString()}`)
+    source = new EventSourceCtor(`/api/v1/messages/stream?${params.toString()}`)
 
     source.addEventListener('message', (e: MessageEvent) => {
       try {
@@ -32,7 +39,7 @@ export function useSSE(options: {
         retryCount = 0
         options.onMessage(payload)
       } catch {
-        // JSON inválido — ignorar
+        // JSON invalid — ignore
       }
     })
 
@@ -59,7 +66,7 @@ export function useSSE(options: {
     const next = channelIds.slice().sort().join(',')
     subscribedChannels = channelIds
 
-    if (prev === next) return // lista não mudou, manter conexão
+    if (prev === next) return
 
     closeConnection()
     retryCount = 0

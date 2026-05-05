@@ -160,33 +160,66 @@ func (p *Provider) readStream(ctx context.Context, body io.Reader) ([]string, er
 }
 
 // parseSuggestions extracts a JSON string array from the model response.
-// It first tries to find a JSON array; if the model returned a JSON object
-// instead (e.g. {"completion 1": "...", ...}), it falls back to extracting
-// the string values from that object.
+// Handles three formats models produce:
+//  1. Plain array:  ["s1","s2","s3"]
+//  2. Object with an array field: {"completions":["s1","s2","s3"],...}
+//  3. Object with string values: {"1":"s1","2":"s2","3":"s3"}
 func parseSuggestions(raw string) ([]string, error) {
-	// Try array first.
+	raw = strings.TrimSpace(raw)
+
+	// Try top-level array first.
 	if start := strings.Index(raw, "["); start != -1 {
 		if end := strings.LastIndex(raw, "]"); end > start {
-			var suggestions []string
-			if err := json.Unmarshal([]byte(raw[start:end+1]), &suggestions); err == nil {
-				return suggestions, nil
+			var arr []string
+			if err := json.Unmarshal([]byte(raw[start:end+1]), &arr); err == nil {
+				if filtered := filterSuggestions(arr); len(filtered) > 0 {
+					return filtered, nil
+				}
 			}
 		}
 	}
 
-	// Fallback: model returned a JSON object — extract its string values.
+	// Fallback: model returned a JSON object.
 	if start := strings.Index(raw, "{"); start != -1 {
 		if end := strings.LastIndex(raw, "}"); end > start {
-			var obj map[string]string
-			if err := json.Unmarshal([]byte(raw[start:end+1]), &obj); err == nil && len(obj) > 0 {
-				suggestions := make([]string, 0, len(obj))
+			var obj map[string]json.RawMessage
+			if err := json.Unmarshal([]byte(raw[start:end+1]), &obj); err == nil {
+				// Look for any field that is a string array.
 				for _, v := range obj {
-					suggestions = append(suggestions, v)
+					var arr []string
+					if err := json.Unmarshal(v, &arr); err == nil {
+						if filtered := filterSuggestions(arr); len(filtered) > 0 {
+							return filtered, nil
+						}
+					}
 				}
-				return suggestions, nil
+				// Last resort: extract plain string values from the object.
+				var strObj map[string]string
+				if err := json.Unmarshal([]byte(raw[start:end+1]), &strObj); err == nil {
+					var suggestions []string
+					for _, v := range strObj {
+						if s := strings.TrimSpace(v); s != "" {
+							suggestions = append(suggestions, s)
+						}
+					}
+					if len(suggestions) > 0 {
+						return suggestions, nil
+					}
+				}
 			}
 		}
 	}
 
 	return nil, fmt.Errorf("no JSON array found in response: %q", raw)
+}
+
+// filterSuggestions removes blank or whitespace-only strings.
+func filterSuggestions(suggestions []string) []string {
+	result := make([]string, 0, len(suggestions))
+	for _, s := range suggestions {
+		if trimmed := strings.TrimSpace(s); trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }

@@ -76,6 +76,7 @@ graph LR
 | Layer | Technology |
 |-------|-----------|
 | **Frontend** | Nuxt 4 (Vue 3), Tailwind CSS, i18n (EN/PT) |
+| **Mobile** | React Native 0.76, Expo SDK 52, NativeWind, MMKV, SecureStore |
 | **Backend** | Go 1.23+, gRPC, Protocol Buffers |
 | **Databases** | PostgreSQL 16 (one per service) |
 | **Gateway** | KrakenD v3 (JWT validation, rate limiting, CORS) |
@@ -135,14 +136,24 @@ colloquia-poc-2026/
 ├── CONTRIBUTING.md
 │
 ├── apps/
-│   └── web/                  # Nuxt 4 SPA frontend
-│       ├── app/              # Vue components, pages, composables
-│       ├── server/api/       # BFF proxy routes (Nuxt)
-│       ├── shared/           # Shared types
-│       ├── i18n/             # i18n locale files (EN/PT)
-│       ├── nuxt.config.ts
+│   ├── web/                  # Nuxt 4 SPA frontend
+│   │   ├── app/              # Vue components, pages, composables
+│   │   ├── server/api/       # BFF proxy routes (Nuxt)
+│   │   ├── shared/           # Shared types
+│   │   ├── i18n/             # i18n locale files (EN/PT)
+│   │   ├── nuxt.config.ts
+│   │   ├── package.json
+│   │   └── README.md         # Frontend documentation
+│   │
+│   └── mobile/               # React Native Android app (Expo SDK 52)
+│       ├── app/              # expo-router routes
+│       ├── src/              # API client, stores, hooks, components
+│       ├── assets/           # Icon SVG + generated PNGs
+│       ├── scripts/          # Build helpers (APK, prebuild, icons)
+│       ├── android/          # Generated native Android project (bare workflow)
+│       ├── app.config.ts
 │       ├── package.json
-│       └── README.md         # Frontend documentation
+│       └── README.md         # Mobile documentation
 │
 ├── services/                 # Go microservices
 │   ├── auth/                 # Authentication service
@@ -285,6 +296,55 @@ make run
 
 ---
 
+## Mobile Development
+
+The Android app (`apps/mobile`) connects to the same backend stack as the web frontend. The stack must be running (`cd dev && docker compose up`) before launching the app.
+
+### Prerequisites (in addition to Docker)
+
+- Node 20+
+- Android Studio or Android SDK (`adb` in PATH)
+- Java 17 (for Gradle)
+- A physical Android device or emulator
+
+### Quick Start
+
+```bash
+cd apps/mobile
+npm install
+
+# Physical device on the same Wi-Fi:
+./scripts/set-api-base.sh      # auto-detects LAN IP → writes .env.local
+# OR for Android emulator:
+echo "EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2" > .env.local
+
+npm run prebuild               # generates android/ (once)
+npm run android                # compiles + installs + opens Metro
+```
+
+### Physical Device — Port Forwarding (Alternative to LAN IP)
+
+If the device is connected via USB:
+
+```bash
+adb reverse tcp:18080 tcp:80   # map device:18080 → host port 80 (NGINX)
+echo "EXPO_PUBLIC_API_BASE_URL=http://localhost:18080" > apps/mobile/.env.local
+```
+
+### Build Debug APK
+
+```bash
+cd apps/mobile
+npm run build:apk:debug
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+The CI workflow (`.github/workflows/mobile-android-apk.yml`) builds and uploads a debug APK artifact on every push to `main` that touches `apps/mobile/**`. On a GitHub Release, the APK is also attached for direct download and sideloading.
+
+See `apps/mobile/README.md` for full setup and security details.
+
+---
+
 ## Architecture Highlights
 
 ### Microservices
@@ -320,11 +380,19 @@ cd services/auth
 make test
 ```
 
-The frontend has integration tests:
+The frontend has unit tests:
 
 ```bash
 cd apps/web
 yarn test
+```
+
+The mobile app has type checking and lint:
+
+```bash
+cd apps/mobile
+npm run typecheck
+npm run lint
 ```
 
 ---
@@ -333,6 +401,7 @@ yarn test
 
 - **Backend Services**: See `services/{auth,users,channels,messaging,assist}/README.md`
 - **Frontend**: See `apps/web/README.md`
+- **Mobile**: See `apps/mobile/README.md`
 - **Architecture Decisions**: See "Key Design Decisions" section above
 - **API Reference**: Available in each service's README (HTTP endpoints + gRPC RPCs)
 

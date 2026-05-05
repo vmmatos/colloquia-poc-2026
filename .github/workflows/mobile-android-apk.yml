@@ -1,0 +1,83 @@
+name: Mobile — Android APK
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/mobile-android-apk.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'apps/mobile/**'
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: 'EXPO_PUBLIC_API_BASE_URL a incluir no APK'
+        required: false
+        default: 'http://demo.colloquia.local'
+  release:
+    types: [published]
+
+jobs:
+  build:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    env:
+      EXPO_PUBLIC_API_BASE_URL: ${{ github.event.inputs.api_base_url || vars.MOBILE_API_BASE_URL || 'http://demo.colloquia.local' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/mobile/package-lock.json
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Expo prebuild (Android) — gera android/ se não existir
+        run: node scripts/prebuild.mjs
+
+      - name: Grant Gradle execute permission
+        run: chmod +x android/gradlew
+
+      - name: Build debug APK (with JS bundle, all ABIs)
+        run: node scripts/build-apk.mjs --ci
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: colloquia-android-debug-${{ github.sha }}
+          path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Attach APK to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          name: ${{ github.event.release.name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # For release-signed in the future, add:
+  # secrets: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+  #          ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+  # vars:    MOBILE_API_BASE_URL (public URL of the backend)

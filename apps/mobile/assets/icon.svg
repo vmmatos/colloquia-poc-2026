@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    Colloquia — App Icon
+    Two speech bubbles in gold (#ffb700) on dark (#121212), diagonal layout.
+    Represents a conversation between two participants.
+
+    To generate PNG assets for Expo:
+      npm install --save-dev sharp
+      node scripts/generate-icons.mjs
+
+    Required outputs:
+      assets/icon.png          — 1024×1024 (Play Store / full icon, dark bg baked in)
+      assets/adaptive-icon.png — 1024×1024 (Android adaptive foreground, transparent bg)
+  -->
+
+  <!-- Dark background (baked into icon.png; adaptive-icon.png uses transparent bg) -->
+  <rect width="1024" height="1024" fill="#121212"/>
+
+  <!-- Primary bubble — top-left, represents sender -->
+  <rect x="120" y="140" width="480" height="300" rx="72" fill="#ffb700"/>
+  <!-- Tail pointing down-left -->
+  <polygon points="120,440 100,532 272,440" fill="#ffb700"/>
+
+  <!-- Secondary bubble — bottom-right, represents receiver -->
+  <rect x="344" y="540" width="480" height="320" rx="72" fill="#ffb700"/>
+  <!-- Tail pointing down-right -->
+  <polygon points="596,860 824,896 720,860" fill="#ffb700"/>
+</svg>

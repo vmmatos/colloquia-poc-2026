@@ -17,8 +17,12 @@ const (
 	maxMessageLimit      = 5
 	maxContextLineLength = 200
 
-	systemPrompt = `Suggest 3 short message completions in the same language as the conversation. You may include emojis when natural.
-Output ONLY a JSON array of 3 strings: ["completion 1", "completion 2", "completion 3"]. No explanation, no markdown.`
+	systemPrompt = `You are a chat message completion assistant.
+Suggest 3 short completions for the user's current message, in the same language as the conversation.
+You may include emojis when natural.
+
+CRITICAL: Output ONLY a raw JSON array of exactly 3 strings. No object wrapper. No markdown. No explanation. Nothing before or after the array.
+Correct output example: ["completion one", "completion two", "completion three"]`
 )
 
 type cacheEntry struct {

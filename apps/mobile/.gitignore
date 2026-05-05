@@ -1,0 +1,37 @@
+node_modules/
+.expo/
+dist/
+.env.local
+.env.*.local
+
+# Android build artifacts
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/app/release.keystore
+# JS bundle produced by local `npm run android` — regenerated on each build
+android/app/src/main/assets/index.android.bundle
+android/app/src/main/assets/index.android.bundle.map
+
+# iOS
+ios/build/
+ios/Pods/
+*.xcworkspace
+
+# Expo
+.expo-shared/
+web-build/
+
+# Generated icon PNGs — produced by `npm run generate:icons`
+# Commit these once generated; keep them out of auto-generation noise
+# assets/icon.png
+# assets/adaptive-icon.png
+
+# macOS
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

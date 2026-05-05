@@ -6,3 +6,15 @@ CLAUDE.md
 .claude
 
 /dev/.secrets.env
+
+# Mobile app
+apps/mobile/.expo/
+apps/mobile/.env.local
+apps/mobile/node_modules/
+apps/mobile/android/build/
+apps/mobile/android/app/build/
+apps/mobile/android/.gradle/
+apps/mobile/android/local.properties
+apps/mobile/android/app/release.keystore
+apps/mobile/ios/build/
+apps/mobile/ios/Pods/
